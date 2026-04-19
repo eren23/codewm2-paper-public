@@ -1,0 +1,29 @@
+\section{Hyperparameters}
+\label{app:hyperparameters}
+
+\begin{table}[h]
+\centering
+\caption{Current \code{loops3-auxpred-vicreg} recipe.}
+\smallskip
+\begin{tabular}{ll}
+\toprule
+Parameter & Value \\
+\midrule
+\code{WM\_ENCODER\_LOOPS} & $3$ \\
+\code{WM\_AUX\_LOOPS} & $1,2$ \\
+\code{WM\_LAMBDA\_AUX} & $0.3$ \\
+\code{WM\_AUX\_TYPE} & \code{pred} \\
+\code{WM\_REG\_MODE} & \code{vicreg} \\
+\code{WM\_SIGREG\_WEIGHT} & $0.1$ \\
+\code{WM\_EMA\_DECAY} & $0.99999$ \\
+Model dimension & $128$ \\
+Attention heads & $4$ \\
+Predictor & 6 looped blocks, depth 2 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Pending ablations should fill in the minimum viable auxiliary weight,
+the optimal number of encoder loops, whether VICReg interacts with
+auxiliary type, and why the 256-dimensional VICReg variant diverged in
+the current sweep.

@@ -1,0 +1,20 @@
+\section{Geometry Probe Protocol}
+\label{app:geometry_probes}
+
+The geometry probe suite should report:
+\begin{enumerate}
+    \item layer-wise $\|\Delta z\|/\|z\|$;
+    \item effective rank for states and deltas;
+    \item top singular-value variance share;
+    \item consecutive delta cosine;
+    \item edit-type and scope probe accuracy by loop;
+    \item KNN@1, KNN@5, and KNN@10 over validation embeddings;
+    \item diagonal and off-diagonal prediction-to-target cosine;
+    \item linear-probe ceiling for direct delta prediction.
+\end{enumerate}
+
+The load-bearing comparison is old Phase~5 six-loop geometry versus the
+best completed \code{loops3-auxpred-vicreg} checkpoint.  The mechanism
+claim is strong only if the new checkpoint preserves more transition
+signal at the supervised loops and keeps the final readout high-rank and
+discriminative.

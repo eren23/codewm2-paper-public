@@ -1,0 +1,96 @@
+\section{Introduction}
+\label{sec:introduction}
+
+Git histories turn software into a dynamical system: a repository moves
+through states as commits apply edits.  The first \CodeWM{} preprint
+studied whether a tiny JEPA-style model could learn this transition
+process from code states and edit actions, and found a practical
+stability barrier.  Under the usual fast EMA target update, training hit
+a repeatable 700-step ceiling because the target encoder collapsed; a
+near-static target encoder fixed that failure and enabled stable
+15K-step latent edit prediction~\citep{akbulut2026collapse}.
+
+This paper starts after that fix.  If a tiny JEPA can be stabilized, the
+next question is not merely whether it can predict the next target
+embedding.  The next question is where transition information lives
+inside the model, why some seemingly natural prediction objectives fail
+even when training is stable, and whether the final readout remains
+discriminative enough for the prediction to mean anything.
+
+The answer is geometric.  The previous six-loop encoder does not retain
+transition signal uniformly across depth.  Early loop outputs contain a
+measurable edit signal, but repeated application of the shared encoder
+block progressively smooths that signal away.  By the final loop,
+consecutive states are almost indistinguishable under the target
+encoder, deltas are tiny relative to state vectors, and the representation
+space is strongly anisotropic.  In that geometry, explicitly predicting
+$z_{t+1}-z_t$ is the obvious experiment and the wrong substrate.
+
+The positive result is deep supervision.  Instead of asking the final
+representation to carry every signal, we train intermediate loop outputs
+to remain predictive.  The current winning configuration uses a
+three-loop encoder and predictive auxiliary losses on loops 1 and 2,
+while retaining the near-static EMA target and looped predictor from the
+stabilized \CodeWM{} recipe.  Deep supervision repairs the loop
+intermediates, but it is not sufficient by itself: a high-lift
+\code{loops3-auxpred} checkpoint still collapsed the final attention-pool
+readout to roughly two effective dimensions.  Adding VICReg-style
+variance and covariance regularization is the current Phase~9
+breakthrough because it preserves the lift while restoring a
+high-rank, discriminative readout.
+
+\paragraph{Contributions.}
+\begin{enumerate}
+    \item \textbf{Direct state-space delta prediction is a negative
+          result, by geometry.}  Stabilized six-loop \CodeWM{}
+          compresses transition signal by roughly $12\times$ across
+          loops (transition-to-state norm ratio $0.123 \to 0.010$) into
+          an effective rank of $5/128$.  In that geometry, early-layer
+          readouts, normalized delta losses, and residual predictors
+          all fail to recover a competitive predictor.  The obvious
+          objective is the wrong substrate; this is a reusable
+          lesson for any tiny world-model builder.
+    \item \textbf{Deep supervision for looped encoders.}  Predictive
+          auxiliary losses on intermediate loop outputs preserve useful
+          state representations and raise lift, but also expose that
+          lift alone is not a sufficient success metric.
+    \item \textbf{Readout-collapse diagnostics and VICReg repair.}
+          Discriminability probes show that high lift can coexist with
+          online effective rank $1.95/128$ and KNN@1 near random.  On a
+          full-validation audit (N=$5000$), VICReg delivers a
+          $\sim\!20\times$ improvement in readout discriminability
+          ($14\times$ KNN@5, $25\times$ effective rank) over the
+          pre-VICReg baseline, peaking at step 28K before monotonic
+          overfit.
+    \item \textbf{Head-to-head against code foundation
+          models~\citep{guo2022unixcoder,feng2020codebert}.}  On a paper-grade retrieval
+          eval (1000 queries over a 5000-commit gallery), the
+          $1.3$M-parameter step-28K \CodeWM{} matches $125.9$M
+          UnixCoder: a $+0.030$ MRR edge on moderate criteria and a
+          statistical tie on the strictest action-cosine threshold, at
+          $10\times$ lower CPU latency.  A smaller development-scale
+          benchmark dominates CodeBERT ($124.6$M) at $21\times$ lower
+          latency.
+    \item \textbf{Evaluation corrections and bottleneck diagnosis.}
+          A 128-sample gallery inflates absolute KNN numbers
+          $\sim\!12\times$ relative to a 5000-sample gallery; we
+          document the inflation explicitly.  Cross-seed runs reveal
+          that the peak result is a single-seed optimum
+          ($2\text{--}3\times$ KNN@5 variance), and that predictor
+          effective rank ($5\text{--}6/128$) is the binding bottleneck
+          independent of encoder health.
+\end{enumerate}
+
+\paragraph{Status.}
+This is an active draft.  Phase~8 geometry and delta-prediction results
+are treated as established within the current experiment log.  Phase~9
+numbers are audited on the full validation set.  The foundation-model
+head-to-head uses the peak step-28K checkpoint (seed~42, pre-fix) scaled
+to $1000$ queries $\times$ $5000$ gallery.  A post-hoc seed bug was
+identified: the step-28K peak benefited from a fortunate initialization.
+Cross-seed runs (seeds 42, 43 post-fix) trail by $2\text{--}3\times$ on
+KNN@5, and predictor collapse (effective rank $5\text{--}6/128$) is
+present across \emph{all} seeds.  Cross-seed variance and the predictor
+bottleneck are reported honestly in \S\ref{subsec:cross_seed}.  A
+CodeT5+ retry with the correct encoder API and \KernelWM{} transfer
+remain in progress.

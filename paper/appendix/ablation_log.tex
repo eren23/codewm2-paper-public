@@ -1,0 +1,18 @@
+\section{Ablation Log}
+\label{app:ablation_log}
+
+The next ablation batch should be recorded here once complete.  The
+planned factors are:
+\begin{enumerate}
+    \item auxiliary weight $\lambda_{\mathrm{aux}} \in \{0.05, 0.1, 0.5, 1.0\}$;
+    \item encoder loop count $L \in \{1,2,4\}$ against the current $L=3$;
+    \item predictive aux versus NT-Xent contrastive aux at matched weight;
+    \item VICReg strength and signal-regularizer weight;
+    \item optional dense skip and early-readout controls.
+\end{enumerate}
+
+For each run, record tier, steps, seed, prediction cosine, delta cosine,
+copy cosine, lift over copy, train/validation gap, and whether
+memorization warnings fired.  Also record online/target effective rank,
+KNN@1, KNN@5, KNN@10, and prediction-to-target off-diagonal cosine so a
+high-lift but collapsed readout cannot be mistaken for a clean win.

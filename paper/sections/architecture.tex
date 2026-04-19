@@ -1,0 +1,96 @@
+\section{Deep-Supervised VICReg Architecture}
+\label{sec:architecture}
+
+The current winning model is intentionally close to the stabilized
+\CodeWM{} baseline.  It changes where supervision is applied, how far
+the encoder is allowed to recurse, and how the final readout is
+regularized; it does not rely on a larger model or a new dataset.
+
+\subsection{Baseline Components}
+
+The base model has three components:
+\begin{enumerate}
+    \item an online looped transformer encoder for the pre-edit code
+          state;
+    \item a lightweight action encoder for the edit vector;
+    \item a looped predictor that maps online state plus action into the
+          target encoder's post-edit space.
+\end{enumerate}
+The target encoder remains near-static with EMA decay $0.99999$, matching
+the stabilization recipe from the first paper.
+
+\subsection{\code{loops3-auxpred-vicreg}}
+
+The current Phase~9 recipe is:
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+Setting & Value \\
+\midrule
+Encoder loops & $3$ \\
+Model dimension & $128$ \\
+Attention heads & $4$ \\
+Pooling & attention/CLS-style pooled code state \\
+Predictor & 6 looped blocks, depth 2 \\
+Target update & EMA decay $0.99999$ \\
+Auxiliary loops & $1,2$ \\
+Auxiliary type & predictive \\
+Auxiliary weight & $0.3$ \\
+Readout regularizer & VICReg \\
+Signal regularizer weight & $0.1$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+In environment-variable form:
+\begin{center}
+\begin{tabular}{ll}
+\code{WM\_ENCODER\_LOOPS} & \code{3} \\
+\code{WM\_AUX\_LOOPS} & \code{1,2} \\
+\code{WM\_LAMBDA\_AUX} & \code{0.3} \\
+\code{WM\_AUX\_TYPE} & \code{pred} \\
+\code{WM\_REG\_MODE} & \code{vicreg} \\
+\code{WM\_SIGREG\_WEIGHT} & \code{0.1} \\
+\code{WM\_EMA\_DECAY} & \code{0.99999}
+\end{tabular}
+\end{center}
+
+\subsection{Why Predictive Aux Beats Contrastive Aux}
+
+The current evidence favors predictive auxiliary losses over contrastive
+auxiliary losses for the loop-intermediate objective.  Contrastive aux
+losses impose representation-level geometry at intermediate loops, while
+predictive aux losses ask each loop to remain useful for the actual
+online-to-target mapping.  For a looped encoder with shared weights, this
+matters: the same block must be useful after one application, two
+applications, and the final application.  Predictive deep supervision
+directly trains that property.
+
+\subsection{Why VICReg Is Needed at the Readout}
+
+The high-lift \code{loops3-auxpred} checkpoint demonstrated that deep
+supervision repaired the intermediates, not the whole representation
+pipeline.  Per-loop probes still found strong edit information at loop 3,
+but the final attention-pool readout collapsed to an online effective
+rank of about $2/128$.  In that state the predictor can learn a real
+online-to-target mapping while still failing to distinguish examples:
+the predicted vector has high cosine with the correct target, but also
+high cosine with many wrong targets.
+
+VICReg targets this failure directly.  The invariance term keeps the
+prediction aligned with the target, while the variance hinge and
+covariance penalty prevent the pooled code state from using only a tiny
+number of dimensions.  This is why the current recipe reports
+discriminability metrics next to lift: a viable readout must improve both
+prediction alignment and cross-example separation.
+
+\subsection{Interpreting Negative \copycos}
+
+In medium-tier \code{loops3-auxpred} runs, \copycos{} becomes
+approximately zero or slightly negative.  This can mean the predictor is
+doing real work by translating from online representation space into
+target representation space.  It is not, by itself, enough to claim a
+healthy representation.  The Phase~9 caveat is that a collapsed readout
+can also make the copy baseline weak and thereby inflate lift.  Negative
+\copycos{} is therefore useful only when paired with effective-rank and
+KNN checks.

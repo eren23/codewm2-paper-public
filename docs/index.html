@@ -1,0 +1,509 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="color-scheme" content="dark" />
+  <title>From Early-Loop Signal to Readout Repair: Deep Supervision and VICReg in Tiny JEPA Code Models</title>
+  <meta name="description" content="Companion page for the CodeWM2 paper: deep supervision preserves intermediate-loop signal, VICReg repairs readout collapse, and a 1.3M parameter model matches 125.9M UnixCoder at 10x lower latency." />
+  <meta name="author" content="Eren Akbulut" />
+  <meta name="citation_title" content="From Early-Loop Signal to Readout Repair: Deep Supervision and VICReg in Tiny JEPA Code Models" />
+  <meta name="citation_author" content="Eren Akbulut" />
+  <meta name="citation_publication_date" content="2026" />
+  <meta name="citation_pdf_url" content="https://eren23.github.io/codewm2-paper-public/main.pdf" />
+  <meta name="citation_abstract_html_url" content="https://eren23.github.io/codewm2-paper-public/" />
+
+  <meta property="og:title" content="From Early-Loop Signal to Readout Repair — CodeWM2" />
+  <meta property="og:description" content="Deep supervision + VICReg in tiny JEPA code models. 1.3M params matches 125.9M UnixCoder at 10x lower latency." />
+  <meta property="og:type" content="article" />
+  <meta property="og:video" content="final_story_1080p60.mp4" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Serif:ital,wght@0,400;0,500;1,400&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet" />
+
+  <!-- KaTeX for inline math rendering -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" integrity="sha384-nB0miv6/jRmo5UMMR1wu3Gz6NLsoTkbqJghGIsx//Rlm+ZU03BU6SQNC66uf4l5+" crossorigin="anonymous" />
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" integrity="sha384-7zkQWkzuo3B5mTepMUcHkMB5jZaolc2xDwL6VFqjFALcbeS9Ggm/Yr2r3Dy4lfFg" crossorigin="anonymous"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" integrity="sha384-43gviWU0YVjaDtb/GhzOouOXtZMP/7XUzwPTstBeZFe/+rCMvRwr4yROQP43s0Xk" crossorigin="anonymous"
+    onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false,strict:false});"></script>
+
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- grain overlay -->
+  <div class="grain" aria-hidden="true"></div>
+
+  <!-- top bar: faux terminal prompt -->
+  <header class="topbar" role="banner">
+    <span class="topbar__dots" aria-hidden="true">
+      <i></i><i></i><i></i>
+    </span>
+    <span class="topbar__path">~/codewm2-paper-public</span>
+    <span class="topbar__prompt">$ cat <em>paper.tex</em> | render --landing</span>
+  </header>
+
+  <main class="shell">
+
+    <!-- ═══════════════════════════════════════════════════ hero -->
+    <section class="hero" aria-labelledby="paper-title">
+      <p class="hero__meta">
+        <span class="tag">preprint</span>
+        <span class="sep">/</span>
+        <span>code world models ii</span>
+        <span class="sep">/</span>
+        <span>tiny-jepa &middot; 1.3&thinsp;M params</span>
+      </p>
+
+      <h1 id="paper-title" class="hero__title">
+        <span class="line">From Early-Loop Signal</span>
+        <span class="line accent">to Readout Repair</span>
+        <span class="line muted">Deep Supervision and VICReg in Tiny JEPA Code Models<span class="caret" aria-hidden="true"></span></span>
+      </h1>
+
+      <p class="hero__byline">
+        <span class="author">Eren Akbulut</span>
+        <span class="sep">&middot;</span>
+        <span class="year">2026</span>
+      </p>
+
+      <p class="hero__tldr">
+        The stabilized tiny JEPA encoder compresses transition signal
+        <em>$12\times$</em> across loops. Direct delta prediction is a
+        genuine negative result. Deep supervision on intermediate loops
+        preserves the signal, but high lift can mask a collapsed readout.
+        VICReg at the readout delivers <strong>~20&times;</strong>
+        discriminability improvement and makes a
+        <strong>1.3&thinsp;M</strong> parameter model match
+        <strong>125.9&thinsp;M</strong> UnixCoder on CommitPackFT edit
+        retrieval at <strong>10&times;</strong> lower CPU latency.
+      </p>
+
+      <nav class="actions" aria-label="primary">
+        <a class="btn btn--primary" href="main.pdf" target="_blank" rel="noopener">
+          <span class="btn__sigil">pdf</span><span class="btn__label">Read the paper</span>
+        </a>
+        <a class="btn" href="final_story_1080p60.mp4" target="_blank" rel="noopener">
+          <span class="btn__sigil">mp4</span><span class="btn__label">Video (HD 1080p60)</span>
+        </a>
+        <a class="btn" href="https://eren23.github.io/codewm-paper-public/" target="_blank" rel="noopener">
+          <span class="btn__sigil">p1</span><span class="btn__label">Paper 1</span>
+        </a>
+        <a class="btn" href="#code">
+          <span class="btn__sigil">src</span><span class="btn__label">Code</span>
+        </a>
+        <a class="btn" href="#cite">
+          <span class="btn__sigil">tex</span><span class="btn__label">BibTeX</span>
+        </a>
+      </nav>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════ video -->
+    <section class="block video" id="video" aria-labelledby="video-title">
+      <h2 class="block__title" id="video-title">
+        <span class="block__hash">0x01</span> Video companion
+      </h2>
+      <p class="block__lede">
+        A ten-scene Manim walk-through covering the signal geometry,
+        deep-supervision, VICReg readout repair, and the foundation-model
+        head-to-head. This is a curated Paper&nbsp;1&nbsp;&rarr;&nbsp;Paper&nbsp;2
+        narrative. Embedded at 480p15 for quick viewing; download the HD
+        build for presentations.
+      </p>
+      <figure class="video__frame">
+        <video
+          controls
+          preload="metadata"
+          playsinline
+        >
+          <source src="final_story_480p15.mp4" type="video/mp4" />
+          Your browser can't play MP4. <a href="final_story_480p15.mp4">Download the video.</a>
+        </video>
+        <figcaption class="video__caption">
+          <span>scene 01&ndash;09 &middot; 10 scenes &middot; manim community</span>
+          <a href="final_story_1080p60.mp4" download>&darr; 1080p60 &middot; 5.6&thinsp;MB</a>
+        </figcaption>
+      </figure>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════ paper 1 callout -->
+    <section class="block" aria-labelledby="p1-title">
+      <h2 class="block__title" id="p1-title">
+        <span class="block__hash">0x02</span> Paper 1 foundation
+      </h2>
+      <p class="block__lede">
+        This paper builds on the near-static target encoder fix from
+        Paper&nbsp;1. That work identified a ${\sim}700$-step training
+        ceiling caused by target-encoder collapse and showed that holding
+        the target approximately static enables stable 15K-step training
+        at 1.1&thinsp;M parameters.
+      </p>
+      <a class="paper1" href="https://eren23.github.io/codewm-paper-public/" target="_blank" rel="noopener">
+        <span class="paper1__tag">P1</span>
+        <span class="paper1__body">
+          <strong>Diagnosing and Fixing Encoder Collapse in Tiny JEPA Code Transition Models</strong>
+          <span>Akbulut, 2026 &middot; Copy-baseline diagnostic, near-static EMA fix, 0.6&thinsp;MB Rust/WASM deployment</span>
+        </span>
+        <span class="paper1__arrow">&nearr;</span>
+      </a>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════ abstract -->
+    <section class="block abstract" aria-labelledby="abstract-title">
+      <h2 class="block__title" id="abstract-title">
+        <span class="block__hash">0x03</span> Abstract
+      </h2>
+      <div class="prose">
+        <p>
+          Stabilized tiny JEPA code models prevent training collapse, but
+          leave open where transition information lives inside the model.
+          Geometry probes show that the six-loop encoder compresses
+          transition signal by roughly $12\times$ across loops into an
+          effective rank of $5/128$, and direct delta prediction remains a
+          genuine negative result: consecutive code states are too similar
+          to serve as a useful target.
+        </p>
+        <p>
+          Predictive deep supervision on intermediate loops raises lift
+          over a copy baseline by more than $+1.0$, but a
+          discriminability probe reveals the caveat: the high-lift readout
+          collapses to $1.95/128$ effective rank with near-random KNN, so
+          lift alone is gameable. VICReg at the readout resolves this
+          collapse, delivering $\sim\!20\times$ improvement in readout
+          discriminability on a full-validation audit ($N = 5000$),
+          peaking at step 28K before monotonic overfit.
+        </p>
+        <p>
+          At $1.3$&thinsp;M parameters, CodeWM matches $125.9$&thinsp;M
+          UnixCoder on CommitPackFT edit retrieval at $10\times$ lower CPU
+          latency. Cross-seed runs show the peak is a single-seed optimum
+          with $2\text{--}3\times$ KNN variance: the encoder is
+          consistently repaired across seeds, but predictor effective rank
+          ($5\text{--}6/128$) is the binding bottleneck.
+        </p>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════ contributions -->
+    <section class="block" aria-labelledby="contrib-title">
+      <h2 class="block__title" id="contrib-title">
+        <span class="block__hash">0x04</span> Key contributions
+      </h2>
+      <ol class="contribs">
+        <li>
+          <span class="contribs__num">01</span>
+          <div>
+            <h3>Signal compressed $12\times$ across loops.</h3>
+            <p>Delta/state ratio drops $0.123 \to 0.010$ across six loops. Early loops carry transition information; the final readout is nearly isotropic at effective rank $5/128$.</p>
+          </div>
+        </li>
+        <li>
+          <span class="contribs__num">02</span>
+          <div>
+            <h3>Direct delta prediction is a negative result.</h3>
+            <p>Explicit $z_{t+1} - z_t$ prediction fails: consecutive code states are too similar in the target space to serve as a useful target.</p>
+          </div>
+        </li>
+        <li>
+          <span class="contribs__num">03</span>
+          <div>
+            <h3>Deep supervision preserves intermediate signal.</h3>
+            <p>Predictive auxiliary losses on loops 1 and 2 keep intermediate representations informative. Lift crosses $+1.0$ over the copy baseline.</p>
+          </div>
+        </li>
+        <li>
+          <span class="contribs__num">04</span>
+          <div>
+            <h3>Lift alone is gameable.</h3>
+            <p>A high-lift checkpoint collapsed the readout to $1.95/128$ effective rank with KNN@1 near random. Lift <em>must</em> be checked against rank and KNN.</p>
+          </div>
+        </li>
+        <li>
+          <span class="contribs__num">05</span>
+          <div>
+            <h3>VICReg repairs the readout.</h3>
+            <p>Full-validation audit ($N = 5000$): $\sim\!20\times$ readout discriminability improvement. $14\times$ KNN@5, $25\times$ effective rank over pre-VICReg baseline.</p>
+          </div>
+        </li>
+        <li>
+          <span class="contribs__num">06</span>
+          <div>
+            <h3>$1.3$&thinsp;M params matches $125.9$&thinsp;M UnixCoder.</h3>
+            <p>On paper-grade CommitPackFT edit retrieval ($1000 \times 5000$), competitive at ${\sim}100\times$ smaller and $10\times$ lower CPU latency.</p>
+          </div>
+        </li>
+        <li>
+          <span class="contribs__num">07</span>
+          <div>
+            <h3>Cross-seed variance is real.</h3>
+            <p>Peak KNN@5 $= 5.80\%$ is a single-seed optimum. Cross-seed runs trail by $2\text{--}3\times$. Honest reporting, not inflated reproducibility claims.</p>
+          </div>
+        </li>
+        <li>
+          <span class="contribs__num">08</span>
+          <div>
+            <h3>Predictor is the bottleneck.</h3>
+            <p>Encoder effective rank is healthy ($53\text{--}64/128$) everywhere. Predictor effective rank is collapsed at $5\text{--}6/128$ across all seeds.</p>
+          </div>
+        </li>
+      </ol>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════ results -->
+    <section class="block" id="results" aria-labelledby="results-title">
+      <h2 class="block__title" id="results-title">
+        <span class="block__hash">0x05</span> Results
+      </h2>
+
+      <h3 style="font-family:var(--mono);font-size:13px;color:var(--ink);letter-spacing:.04em;margin-bottom:.8rem;">Full-Validation Audit &mdash; N&thinsp;=&thinsp;5000 gallery</h3>
+      <div class="table-wrap">
+        <table class="results-table">
+          <thead>
+            <tr>
+              <th>Run</th>
+              <th>Steps</th>
+              <th>Seed</th>
+              <th>Eff.&thinsp;Rank (enc)</th>
+              <th>Eff.&thinsp;Rank (pred)</th>
+              <th>KNN@1</th>
+              <th>KNN@5</th>
+              <th>KNN@10</th>
+              <th>KNN@50</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Random baseline</td>
+              <td>&mdash;</td>
+              <td>&mdash;</td>
+              <td>&mdash;</td>
+              <td>&mdash;</td>
+              <td>0.02%</td>
+              <td>0.10%</td>
+              <td>0.20%</td>
+              <td>1.00%</td>
+            </tr>
+            <tr>
+              <td>Pre-VICReg baseline</td>
+              <td>5.5K</td>
+              <td>42</td>
+              <td>2.09</td>
+              <td>&mdash;</td>
+              <td>0.08%</td>
+              <td>0.40%</td>
+              <td>0.96%</td>
+              <td>3.64%</td>
+            </tr>
+            <tr class="highlight">
+              <td>vicreg_promotion (peak)</td>
+              <td>28K</td>
+              <td>42</td>
+              <td class="best">53.3</td>
+              <td>6.1</td>
+              <td class="best">1.42%</td>
+              <td class="best">5.80%</td>
+              <td class="best">9.90%</td>
+              <td class="best">26.1%</td>
+            </tr>
+            <tr>
+              <td>vicreg_s43</td>
+              <td>28K</td>
+              <td>43</td>
+              <td>58.7</td>
+              <td>5.9</td>
+              <td>0.50%</td>
+              <td>2.20%</td>
+              <td>3.98%</td>
+              <td>15.4%</td>
+            </tr>
+            <tr>
+              <td>vicreg_fixed_s42</td>
+              <td>16K</td>
+              <td>42</td>
+              <td>59.9</td>
+              <td>5.2</td>
+              <td>0.82%</td>
+              <td>2.42%</td>
+              <td>4.64%</td>
+              <td>18.6%</td>
+            </tr>
+            <tr>
+              <td>vicreg_fixed_s43</td>
+              <td>6K</td>
+              <td>43</td>
+              <td>63.6</td>
+              <td>5.9</td>
+              <td>0.34%</td>
+              <td>1.48%</td>
+              <td>2.98%</td>
+              <td>9.98%</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="table-note">
+        Peak (seed 42 pre-fix, step 28K) is a single-seed optimum.
+        Cross-seed runs trail by $2\text{--}3\times$ on KNN@5.
+        Encoder effective rank is healthy across all seeds; predictor
+        effective rank is collapsed everywhere ($5\text{--}6/128$).
+      </p>
+
+      <h3 style="font-family:var(--mono);font-size:13px;color:var(--ink);letter-spacing:.04em;margin:2.4rem 0 .8rem;">Foundation Model Head-to-Head &mdash; 1000&thinsp;&times;&thinsp;5000, step&thinsp;28K</h3>
+      <div class="table-wrap">
+        <table class="results-table">
+          <thead>
+            <tr>
+              <th>Model</th>
+              <th>Params</th>
+              <th>MRR (joint)</th>
+              <th>MRR (cos@0.9)</th>
+              <th>MRR (cos@0.95)</th>
+              <th>R@1 (joint)</th>
+              <th>R@1 (cos@0.95)</th>
+              <th>CPU ms</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="highlight">
+              <td>CodeWM (ours)</td>
+              <td>1.3M</td>
+              <td class="best">0.790</td>
+              <td class="best">0.742</td>
+              <td>0.662</td>
+              <td class="best">0.668</td>
+              <td>0.486</td>
+              <td class="best">8.4</td>
+            </tr>
+            <tr>
+              <td>UnixCoder-base</td>
+              <td>125.9M</td>
+              <td>0.760</td>
+              <td>0.736</td>
+              <td class="best">0.671</td>
+              <td>0.609</td>
+              <td class="best">0.490</td>
+              <td>83.7</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="table-note">
+        Competitive at ${\sim}100\times$ smaller, $10\times$ faster.
+        UnixCoder wins on the strictest action-cosine threshold
+        (cos@0.95). Not uniformly dominant &mdash; an honest comparison.
+      </p>
+
+      <div class="caveat">
+        <p>
+          <strong>Status:</strong> Cross-seed variance ($2\text{--}3\times$)
+          and predictor collapse ($5\text{--}6/128$ effective rank) are
+          identified bottlenecks. The peak result is single-seed; further
+          regularization work is needed to close the gap.
+        </p>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════ recipe -->
+    <section class="block recipe" id="recipe" aria-labelledby="recipe-title">
+      <h2 class="block__title" id="recipe-title">
+        <span class="block__hash">0x06</span> Recipe
+      </h2>
+      <pre><code>WM_ENCODER_LOOPS=3
+WM_AUX_LOOPS=1,2
+WM_LAMBDA_AUX=0.3
+WM_AUX_TYPE=pred
+WM_REG_MODE=vicreg
+WM_SIGREG_WEIGHT=0.1
+WM_EMA_DECAY=0.99999</code></pre>
+      <p class="recipe__note">
+        Three-loop encoder, predictive auxiliary losses on loops 1 and 2,
+        VICReg at the readout, and a near-static EMA target. Full
+        hyperparameter table in the paper appendix.
+      </p>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════ code -->
+    <section class="block" id="code" aria-labelledby="code-title">
+      <h2 class="block__title" id="code-title">
+        <span class="block__hash">0x07</span> Code &amp; reproducibility
+      </h2>
+      <p class="block__lede">
+        Three companion repos cover inference, training, and architecture
+        search. All training runs for the paper are logged live to a public
+        Weights &amp; Biases workspace.
+      </p>
+
+      <ul class="repos">
+        <li>
+          <a class="repo" href="https://github.com/eren23/synapse" target="_blank" rel="noopener">
+            <span class="repo__tag">inference</span>
+            <h3>Synapse</h3>
+            <p>Zero-dependency inference engine in Rust, with a Zig WASM shim. Ships the quantised 0.6&thinsp;MB predictor.</p>
+            <span class="repo__link">github.com/eren23/synapse &nearr;</span>
+          </a>
+        </li>
+        <li>
+          <a class="repo" href="https://github.com/eren23/crucible" target="_blank" rel="noopener">
+            <span class="repo__tag">training</span>
+            <h3>Crucible</h3>
+            <p>Training orchestration platform: provisions rental GPUs, dispatches declarative sweeps, streams W&amp;B logs, manages checkpoints.</p>
+            <span class="repo__link">github.com/eren23/crucible &nearr;</span>
+          </a>
+        </li>
+        <li>
+          <a class="repo" href="https://github.com/eren23/crucible-community-tap" target="_blank" rel="noopener">
+            <span class="repo__tag">architecture</span>
+            <h3>Crucible Community Tap</h3>
+            <p>Plug-in architecture registry used for the encoder / predictor variations in the paper's sweeps.</p>
+            <span class="repo__link">github.com/eren23/crucible-community-tap &nearr;</span>
+          </a>
+        </li>
+      </ul>
+
+      <a class="wandb" href="https://wandb.ai/eren23/crucible-code-wm/workspace?nw=nwusereren23" target="_blank" rel="noopener">
+        <span class="wandb__tag">W&amp;B</span>
+        <span class="wandb__body">
+          <strong>Training runs &mdash; live workspace</strong>
+          <span>eren23 / crucible-code-wm &middot; VICReg promotion &middot; cross-seed audits</span>
+        </span>
+        <span class="wandb__arrow">&nearr;</span>
+      </a>
+
+      <p class="block__note">
+        Paper source (LaTeX) and the Manim video source are in the
+        <a href="https://github.com/eren23/codewm2-paper-public">codewm2-paper-public</a>
+        repo alongside this page.
+      </p>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════ bibtex -->
+    <section class="block cite" id="cite" aria-labelledby="cite-title">
+      <h2 class="block__title" id="cite-title">
+        <span class="block__hash">0x08</span> Cite
+      </h2>
+      <pre><code>@misc{akbulut2026readoutrepair,
+  title  = {From Early-Loop Signal to Readout Repair:
+            Deep Supervision and VICReg
+            in Tiny JEPA Code Models},
+  author = {Akbulut, Eren},
+  year   = {2026},
+  note   = {Preprint.
+            \url{https://eren23.github.io/codewm2-paper-public/}},
+}</code></pre>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════ footer -->
+    <footer class="foot">
+      <p>
+        Source &middot; <a href="https://github.com/eren23/codewm2-paper-public">github.com/eren23/codewm2-paper-public</a>
+      </p>
+      <p class="foot__meta">
+        built with LaTeX + Manim + a lot of W&amp;B logs &middot; MIT licensed
+      </p>
+    </footer>
+
+  </main>
+
+</body>
+</html>

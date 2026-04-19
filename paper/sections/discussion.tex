@@ -1,0 +1,151 @@
+\section{Discussion}
+\label{sec:discussion}
+
+\subsection{Lift Is Necessary but Not Sufficient}
+
+The Phase~9 caveat is methodological.  Lift over the copy baseline is a
+useful diagnostic only when the representation remains discriminative.
+If the online and target readouts both occupy tiny subspaces, a predictor
+can achieve high diagonal cosine by mapping into the target subspace
+without carrying much example-specific information.  The off-diagonal
+cosine and KNN probe caught exactly this failure.  Future \CodeWM{}
+claims should therefore report lift together with effective rank and KNN
+retrieval.
+
+\subsection{The Delta Is a Translation, Not a Vector Difference}
+
+The failed state-space delta runs clarify what the model is learning.
+The useful transition signal is not well represented as
+$z_{t+1}-z_t$ in the final target space.  Instead, the predictor learns a
+mapping from an online representation of the before-state, plus action
+conditioning, into the target representation of the after-state.  When
+\copycos{} becomes negative, this translation view becomes necessary:
+copying the previous state is not a plausible explanation, but the
+predictor can still align strongly with the target.  The caveat is that
+translation must be discriminative.  VICReg is useful because it keeps
+the readout high-rank while the predictor learns that translation.
+
+\subsection{Deep Supervision and Shared Weights}
+
+Deep supervision is especially natural for looped encoders.  In an
+ordinary deep stack, auxiliary losses can be interpreted as helping early
+layers receive stronger gradients, in the same way supervised contrastive
+objectives do for image classifiers~\citep{khosla2020supcon}.  In a
+weight-shared looped encoder, the interpretation is sharper: the same
+block must learn a transformation that remains useful after multiple
+recursion depths.  Predictive aux losses ask that shared block to
+preserve usefulness at loop 1, loop 2, and the final loop, rather than
+only at the endpoint.
+
+This is a recipe rather than a one-off fix.  Shared weights make every
+recursion depth reuse the same function, so a successful block cannot be
+specialized only for a single layer index.  Auxiliary prediction losses
+then prevent the easy failure mode: the network cannot defer all useful
+geometry to the final readout while allowing intermediate states to
+collapse.  However, deep supervision alone does not guarantee a healthy
+pooled embedding.  The current recipe needs both pieces: aux prediction
+for intermediate usefulness and VICReg for readout dimensionality.
+
+\subsection{Connections to Temporal Straightening and Latent Reasoning}
+
+Two concurrent lines of work offer complementary framings.
+Concurrent work from the original JEPA
+group~\citep{straightening2026} introduces a curvature regularizer for
+JEPA-style latent planning that promotes temporally straight
+trajectories: latent paths that can be linearly interpolated.  Our
+VICReg objective acts as a discrete analogue: where they regularize
+trajectory curvature continuously, we apply a per-loop variance hinge
+that keeps the readout high-rank and isotropic, preventing the latent
+trajectory from collapsing into a curved low-dimensional manifold.  However, the
+per-loop straightness data (\S\ref{subsec:cross_seed}) show a
+counterintuitive pattern: the peak checkpoint has \emph{lower}
+straightness ($0.213$) than the post-fix run ($0.368$), yet performs
+better on retrieval.  With only three loops yielding a single triple,
+the straightness metric is not yet diagnostic; the connection remains
+suggestive rather than confirmed.
+
+\citet{jepareasoner2025} frame looped transformer blocks as latent
+reasoning steps.  Under their framing, our predictive auxiliary
+losses at intermediate loops are ``supervision on latent
+chain-of-thought'' --- each loop must produce a representation useful
+for the next reasoning step, not just the final answer.  This reframes
+deep supervision from a gradient-flow technique to a latent-CoT
+training signal, and suggests that the recipe may generalize to
+non-code domains where looped encoders perform iterative refinement.
+
+\subsection{Methodological Honesty: When Your Own Metric Lies}
+
+The batch-128 KNN gallery we used during development has a random KNN@1
+baseline of $3.9\%$, not the $0.02\%$ expected on the full validation
+set.  Our screen-tier KNN@5 of $0.359$ corresponds to about $0.034$ on
+full val; the absolute retrieval number was inflated by roughly
+$12\times$.  Two features rescue the claim.  First, the VICReg-versus-baseline
+\emph{ratio} transfers cleanly: $14\times$ KNN@5 and $25\times$ effective
+rank on full val, slightly stronger than on the batch probe.  Second,
+batch-128 remained directionally correct: every decision made against it
+was corroborated by the full-val audit.  The recipe itself did not change
+after the audit, only the reported numbers.  We report this inflation
+explicitly rather than silently substituting the corrected numbers,
+because the gameable-lift failure mode in Phase~9 Stage~2 makes the
+discipline of reporting multiple metrics with their baselines load-bearing
+for the paper.
+
+\subsection{Where Scale Already Reshaped the Claim}
+
+The $1000\times5000$ retrieval eval partially rewrote the external
+claim.  On the development-scale $100\times300$ benchmark \CodeWM{}
+matched or exceeded UnixCoder on every criterion, including the
+strictest action-cosine threshold.  At paper scale the moderate and
+R@1 wins survive but shrink, and on \code{cos@0.95} UnixCoder wins by
+$0.009$ MRR.  We read this not as a failure of the mechanism but as a
+healthy corrective on how the small-gallery benchmark was reading the
+tail of the ranking distribution: edit retrieval at $1.3$M parameters
+is \emph{competitive} with a $125.9$M-parameter general encoder,
+not uniformly dominant.  The efficiency story ($100\times$ smaller,
+$10\times$ lower CPU latency) is untouched.
+
+\subsection{What Would Still Falsify the Story}
+
+The mechanism claim (early-loop signal preservation plus VICReg readout
+repair) survives the cross-seed audit in a narrower form than originally
+hoped.  The step-28K peak \emph{did} partially disappear under other
+seeds: cross-seed KNN@5 trails the peak by $2\text{--}3\times$
+(\S\ref{subsec:cross_seed}).  What survives is the encoder-level claim:
+VICReg reliably lifts encoder effective rank from $\sim\!2$ to
+$53\text{--}64/128$ across all seeds.  The retrieval variance comes from
+the predictor, whose effective rank ($5\text{--}6/128$) is uniformly
+collapsed.  The story would be fully falsified if: (a)~the encoder
+effective-rank improvement itself turns out to be seed-dependent rather
+than consistent; (b)~the paper-grade \code{by\_joint} edge collapses
+when CodeT5+ is added with its correct embedding head; or
+(c)~predictor-specific regularization fails to close the
+encoder--predictor rank gap, suggesting the bottleneck is architectural
+rather than merely under-regularized.
+
+\subsection{Predictor Collapse as the Next Bottleneck}
+
+The cross-seed investigation surfaced a finding that was hidden by the
+single-seed, lift-focused evaluation: the predictor is the bottleneck,
+not the encoder.  Encoder effective rank is healthy ($53\text{--}64/128$)
+across all seeds.  Predictor effective rank is $5\text{--}6/128$ across
+\emph{all} checkpoints, including the peak.  VICReg was designed to fix
+the encoder readout, and it succeeds at that.  But the predictor was
+never explicitly regularized for rank, and the same collapse
+pattern --- high cosine alignment, low cross-example discrimination ---
+that previously affected the encoder readout now appears in the
+predictor output.
+
+This reframes the next axis of work.  Scaling data or encoder depth is
+unlikely to help if the predictor compresses all encoder information into
+a six-dimensional subspace.  Predictor-side VICReg, deeper predictor
+architectures, or replacing the looped predictor with a single-pass
+predictor are the natural next experiments.
+
+\subsection{KernelWM}
+
+\KernelWM{} is related but not identical.  Early results show high
+prediction cosine and faster memorization, likely because the kernel
+dataset is smaller than the CommitPackFT code-transition split.  For this
+paper, \KernelWM{} should remain a secondary domain unless early-stopping
+or data-augmentation checks show that the same geometry mechanism
+generalizes without merely memorizing the smaller corpus.

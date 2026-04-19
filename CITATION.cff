@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "If you use this work, please cite it using the metadata from this file."
+title: "From Early-Loop Signal to Readout Repair: Deep Supervision and VICReg in Tiny JEPA Code Models"
+authors:
+  - family-names: Akbulut
+    given-names: Eren
+license: MIT
+url: "https://eren23.github.io/codewm2-paper-public/"
+repository-code: "https://github.com/eren23/codewm2-paper-public"
+preferred-citation:
+  type: generic
+  title: "From Early-Loop Signal to Readout Repair: Deep Supervision and VICReg in Tiny JEPA Code Models"
+  authors:
+    - family-names: Akbulut
+      given-names: Eren
+  year: 2026
+  url: "https://eren23.github.io/codewm2-paper-public/"
+  notes: "Preprint."

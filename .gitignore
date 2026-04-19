@@ -1,0 +1,38 @@
+# macOS
+.DS_Store
+
+# Dev tooling / local assistants
+.claude/
+.attocode/
+.superpowers/
+
+# LaTeX build artifacts
+*.aux
+*.log
+*.out
+*.bbl
+*.blg
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.toc
+paper/texput.*
+
+# Manim render cache
+video/media/
+
+# Working notes / internal plans
+UPDATE_PLAN*.md
+*PLAN_ROUND*.md
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# Playwright/test artifacts
+.playwright-mcp/
+/check-*.png
+/landing-*.png

@@ -1,0 +1,90 @@
+\documentclass[11pt]{article}
+
+% ---------- Packages ----------
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage{xcolor}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usetikzlibrary{calc}
+\usepackage{hyperref}
+
+% ---------- Hyperref setup ----------
+\hypersetup{
+    colorlinks=true,
+    linkcolor={blue!70!black},
+    citecolor={green!50!black},
+    urlcolor={blue!80!black},
+}
+
+% ---------- Lightweight macros ----------
+\newcommand{\code}[1]{\texttt{#1}}
+\newcommand{\CodeWM}{\textsc{CodeWM}}
+\newcommand{\KernelWM}{\textsc{KernelWM}}
+\newcommand{\copycos}{\ensuremath{\mathrm{copy\_cos}}}
+\newcommand{\lift}{\ensuremath{\mathrm{lift}}}
+
+% ---------- Title ----------
+\title{From Early-Loop Signal to Readout Repair:\\
+       Deep Supervision and VICReg\\
+       in Tiny JEPA Code Models}
+
+\author{Eren Akbulut}
+
+\date{Draft, April 2026}
+
+% ==========================================================================
+\begin{document}
+\maketitle
+
+% ---------- Abstract ----------
+\begin{abstract}
+Stabilized tiny JEPA code models prevent training collapse, but leave
+open where transition information lives inside the model.  Geometry
+probes show that the six-loop encoder compresses transition signal by
+roughly $12\times$ across loops into an effective rank of $5/128$, and
+direct delta prediction remains a genuine negative result:
+consecutive code states are too similar to serve as a useful target.
+Predictive deep supervision on intermediate loops raises lift over a
+copy baseline by more than $+1.0$, but a discriminability probe
+reveals the caveat: the high-lift readout collapses to $1.95/128$
+effective rank with near-random KNN, so lift alone is gameable.
+VICReg at the readout resolves this collapse, delivering
+$\sim\!20\times$ improvement in readout discriminability on a
+full-validation audit (N=$5000$), peaking at step 28K before monotonic
+overfit.  At $1.3$M parameters, \CodeWM{} matches $125.9$M UnixCoder
+on CommitPackFT edit retrieval at $10\times$ lower CPU latency.
+Cross-seed runs show the peak is a single-seed optimum with
+$2\text{--}3\times$ KNN variance: the encoder is consistently
+repaired across seeds, but predictor effective rank
+($5\text{--}6/128$) is the binding bottleneck.  The contribution is a
+mechanism claim: intermediate-loop signal must be preserved and the
+readout explicitly regularized, or prediction quality is a collapsed
+space-translation artifact.
+\end{abstract}
+
+% ---------- Main body ----------
+\input{sections/introduction}
+\input{sections/background}
+\input{sections/geometry}
+\input{sections/architecture}
+\input{sections/experiments}
+\input{sections/negative_results}
+\input{sections/discussion}
+\input{sections/conclusion}
+
+% ---------- References ----------
+\bibliographystyle{plainnat}
+\bibliography{references}
+
+% ---------- Appendices ----------
+\appendix
+\input{appendix/hyperparameters}
+\input{appendix/ablation_log}
+\input{appendix/geometry_probes}
+\input{appendix/kernelwm}
+
+\end{document}

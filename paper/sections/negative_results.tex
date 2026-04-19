@@ -1,0 +1,61 @@
+\section{Negative Results: Direct Delta Prediction}
+\label{sec:negative_results}
+
+The natural response to the Phase~8 geometry finding is to predict the
+state-space delta directly:
+\begin{equation}
+    \Delta z_t = f_{\bar{\theta}}(s_{t+1})
+               - f_{\bar{\theta}}(s_t).
+    \label{eq:explicit_delta}
+\end{equation}
+This section records why that did not work.
+
+\subsection{Initial Three-Way Comparison}
+
+The initial 15K-step comparison tested standard JEPA prediction, an
+early-layer delta readout, and a final-layer delta readout.  The baseline
+won decisively:
+
+\begin{table}[h]
+\centering
+\caption{Phase~8 direct delta prediction comparison.}
+\label{tab:delta}
+\smallskip
+\begin{tabular}{llll}
+\toprule
+Metric & Baseline JEPA & Delta early-layer & Delta final-layer \\
+\midrule
+Validation delta cosine & $0.972$ & $0.278 \rightarrow 0.388$ & $0.241 \rightarrow 0.271$ \\
+Validation cosine & $0.980$ & $0.106 \rightarrow -0.09$ & $-0.006 \rightarrow 0.04$ \\
+Lift over copy & $+0.280$ & $-0.648 \rightarrow -0.84$ & $-0.910 \rightarrow -0.82$ \\
+Train delta cosine & $0.985$ & $0.500$ & $0.499$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Early-layer readout was better than final-layer readout, confirming the
+geometry probe, but neither was competitive with the JEPA baseline.
+
+\subsection{Fair-Loss Fixes}
+
+An implementation audit found a real asymmetry: the baseline optimized a
+directional normalized objective, while the delta variants used a raw
+LogCosh loss on tiny deltas.  Two fixes were tested:
+\begin{enumerate}
+    \item normalized delta loss;
+    \item normalized delta loss plus a residual predictor.
+\end{enumerate}
+The residual variant improved validation delta cosine to about $0.356$
+around step 2800, but it did not break through.  The overall conclusion
+is therefore stronger than ``the first implementation was unfair.''
+After correcting the loss asymmetry, direct delta prediction still
+remained far below the online-to-target prediction baseline.
+
+\subsection{Interpretation}
+
+The negative result is not incidental.  The explicit delta lives in a
+space where the signal is tiny, low-rank, and weakly correlated across
+steps.  The successful model does not recover by making that delta target
+cleaner.  It recovers by preventing the encoder from destroying useful
+intermediate representations and by learning the translation between
+online and target spaces.

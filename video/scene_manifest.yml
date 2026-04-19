@@ -1,0 +1,33 @@
+# Curated story order for the connected CodeWM video.
+# Scenes marked cut in storyboard.md are intentionally not listed here.
+scenes:
+  - id: scene01_code_evolves
+    file: scenes/scene01_code_evolves.py
+    class: CodeEvolves
+  - id: scene02_state_pipeline
+    file: scenes/scene02_state_pipeline.py
+    class: StatePipeline
+  - id: scene03_training_survives
+    file: scenes/scene03_training_survives.py
+    class: TrainingSurvives
+  - id: scene04_stable_not_enough
+    file: scenes/scene04_stable_not_enough.py
+    class: StableNotEnough
+  - id: scene05_signal_lives_early
+    file: scenes/scene05_signal_lives_early.py
+    class: SignalLivesEarly
+  - id: scene06_delta_fails
+    file: scenes/scene06_delta_fails.py
+    class: DeltaFails
+  - id: scene07_aux_pred_contract
+    file: scenes/scene07_aux_pred_contract.py
+    class: AuxPredContract
+  - id: scene08_current_recipe
+    file: scenes/scene08_current_recipe.py
+    class: CurrentRecipe
+  - id: scene08b_foundation_bench
+    file: scenes/scene08b_foundation_bench.py
+    class: FoundationBench
+  - id: scene09_closing
+    file: scenes/scene09_closing.py
+    class: ClosingSynthesis

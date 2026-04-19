@@ -1,0 +1,39 @@
+\section{Conclusion}
+\label{sec:conclusion}
+
+The first \CodeWM{} paper showed how to keep tiny JEPA code transition
+models from collapsing.  This paper asks what the stabilized model is
+actually doing internally.  The answer, so far, is that transition signal
+lives early: repeated looped encoding compresses it away, explicit
+state-space deltas are too small and noisy to serve as the main target,
+and predictive deep supervision preserves the intermediate
+representations the predictor needs.
+
+The Phase~9 breakthrough is that this is only half of the story.  High
+lift can be achieved with a collapsed readout, so the model must also be
+checked for rank and cross-example discrimination.  The current practical
+recipe is compact: stop the encoder at three loops, add predictive
+auxiliary losses on intermediate loops, keep the near-static target, and
+use VICReg to keep the pooled readout high-rank while the predictor
+learns online-to-target translation.  Against a $125.9$M UnixCoder on a
+paper-grade $1000\times5000$ retrieval eval, a $1.3$M \CodeWM{} is
+competitive but not uniformly dominant: moderate wins on
+\code{by\_joint}, a tie on \code{cos@0.9}, and a slight loss on the
+strictest \code{cos@0.95}, at two orders of magnitude less capacity and
+an order of magnitude less CPU latency.  Cross-seed runs reveal substantial retrieval variance
+($2\text{--}3\times$ KNN@5 gap between peak and next-best seed) and
+identify predictor collapse (effective rank $5\text{--}6/128$) as the
+next bottleneck, independent of the healthy encoder readout.  The
+remaining work is predictor-side regularization, a CodeT5+ retry via
+its dedicated embedding head, and a \KernelWM{} transfer test.  The
+full-validation
+audit is itself a methodological contribution: a batch-128 KNN gallery
+inflated our best development-time number by $12\times$, and correcting
+it against the $0.02\%$ random baseline surfaced a genuine
+$\sim\!20\times$ VICReg-over-baseline improvement in readout
+discriminability.  The cross-seed audit (\S\ref{subsec:cross_seed})
+adds a second corrective: the headline KNN@5 of $5.80\%$ is a
+single-seed peak, not a reproducible point estimate.  Reporting this
+honestly, alongside the predictor-collapse finding, sets the next
+research direction: the encoder is fixed; the predictor is the
+bottleneck.

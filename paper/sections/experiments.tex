@@ -1,0 +1,396 @@
+\section{Experiments}
+\label{sec:experiments}
+
+The experimental arc proceeds in five stages.  Predictive deep
+supervision makes the looped encoder trainable at intermediate depths.
+A discriminability probe shows that high lift is not a sufficient
+success signal because the final readout can collapse.  VICReg at the
+readout resolves that collapse while preserving lift.  A
+full-validation audit corrects a $12\times$ inflation in the
+small-gallery KNN metric and surfaces a peak-then-overfit curve.
+Finally, a CPU retrieval head-to-head places the $1.3$M \CodeWM{}
+within noise of $125.9$M UnixCoder and well ahead of $124.6$M
+CodeBERT.
+
+\subsection{Deep Supervision Raises Lift}
+\label{subsec:deepsup}
+
+A short 400-step pass across 15 candidate recipes isolates two
+interventions that consistently improve prediction quality: predictive
+auxiliary supervision at intermediate loops, and reducing the encoder
+to three loops.  Contrastive auxiliary losses and dense skip connections
+do not help at this scale.
+
+\begin{table}[t]
+\centering
+\caption{Selected 400-step screening results.  Predictive aux at loops
+$\{1,2,3\}$ beats the \CodeWM{} control by a wide margin on delta
+cosine.}
+\label{tab:wave1}
+\smallskip
+\begin{tabular}{llll}
+\toprule
+Run & Loss & Delta cosine & Category \\
+\midrule
+\KernelWM{} baseline & $0.017$ & $0.973$ & Kernel control \\
+aux-pred & $0.024$ & $0.955$ & Predictive aux at loops 1,2,3 \\
+loops3 & $0.051$ & $0.912$ & Shallow encoder \\
+\KernelWM{} + aux & $0.052$ & $0.914$ & Kernel aux variant \\
+\CodeWM{} baseline & $0.063$ & $0.889$ & Code control \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Extending the five best recipes to 2K training steps, the combination
+of a three-loop encoder with predictive auxiliary supervision
+(\code{loops3-auxpred}) is the clear winner on lift over the copy
+baseline:
+
+\begin{table}[t]
+\centering
+\caption{Promoted variants at 2K steps.  Lift is prediction cosine
+minus copy-baseline cosine.}
+\label{tab:wave2}
+\smallskip
+\begin{tabular}{lllll}
+\toprule
+Run & Loss & Delta cosine & Lift & Copy cosine \\
+\midrule
+\KernelWM{} baseline & $0.003$ & $0.997$ & $+0.051$ & $0.949$ \\
+loops3-auxpred & $0.008$ & $0.987$ & $+0.686$ & $0.295$ \\
+aux-pred & $0.013$ & $0.979$ & $+0.638$ & $0.336$ \\
+loops3 & $0.047$ & $0.903$ & $+0.086$ & $0.895$ \\
+aux-loop1 & $0.050$ & $0.975$ & $+0.353$ & $0.617$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+On the initial seed (42, pre-fix), the recipe appeared to scale with
+training budget: lift crossed $+1.0$ by step 8100.  A post-hoc
+investigation (\S\ref{subsec:cross_seed}) found that earlier
+multi-seed lift agreement ($\approx +0.82$ at step 6K across seeds
+42/43/44) was measured on a batch-128 metric that does not track
+full-validation retrieval, and the peak-seed run benefited from a
+fortunate initialization due to a seed bug.  The lift trajectory
+nonetheless motivated the deep-supervision recipe, even though
+the cross-seed retrieval story is weaker than initially assumed.
+
+\subsection{Lift Alone Is a Gameable Metric}
+\label{subsec:gameable}
+
+The follow-up discriminability probe changed the interpretation.  On 100
+real validation samples, the high-lift \code{loops3-auxpred} checkpoint
+had an online effective rank of only $1.95/128$ and KNN@1 of $0.04$.
+The predictor had high diagonal alignment with the target, but also high
+off-diagonal alignment with wrong targets.
+
+\begin{table}[t]
+\centering
+\caption{Readout-collapse diagnostic on the high-lift
+\code{loops3-auxpred} checkpoint.}
+\label{tab:readout_collapse}
+\smallskip
+\begin{tabular}{lll}
+\toprule
+Metric & Value & Interpretation \\
+\midrule
+Online effective rank & $1.95/128$ & Final readout is nearly 2D \\
+Target effective rank & $8.27/128$ & Target is only partially healthier \\
+Predicted effective rank & $2.77/128$ & Predictions are heavily clustered \\
+Cross diagonal cosine & $0.97$ & Correct pairs look aligned \\
+Cross off-diagonal cosine & $0.89$ & Wrong pairs also look aligned \\
+KNN@1 over 100 examples & $0.04$ & Barely above random \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+This does not erase the deep-supervision result.  Per-loop probes showed
+that the encoder intermediates still preserved edit information: loop 3
+edit classification reached $94.5\%$, and final delta/state ratio
+improved from the pre-supervision value $0.010$ to about $0.033$.  The problem
+was narrower and more specific: the attention-pool readout compressed a
+rich token representation into a low-rank embedding.
+
+\subsection{VICReg Repairs the Readout}
+\label{subsec:vicreg}
+
+More than 30 anti-collapse variants were tested after the caveat:
+dense skip connections, dropout, stronger covariance penalties, and
+early fusion alone all failed to restore discriminability.  The
+intervention that worked is VICReg at the readout combined with the
+predictive auxiliary supervision from \S\ref{subsec:deepsup}.
+
+\begin{table}[t]
+\centering
+\caption{VICReg variants at 2K steps, sorted by online effective
+rank.  KNN values use a 128-sample gallery (random KNN@1 baseline
+$3.9\%$); corrected full-validation numbers appear in
+\S\ref{subsec:fullval}.}
+\label{tab:vicreg_screen}
+\smallskip
+\begin{tabular}{llllll}
+\toprule
+Run & Lift & KNN@1 & KNN@5 & KNN@10 & Eff. rank \\
+\midrule
+w7-vicreg-s43 & $+1.16$ & $0.086$ & $0.242$ & $0.422$ & $53.80$ \\
+w5b-vicreg-pred & $+1.06$ & $0.086$ & $0.359$ & $0.477$ & $53.52$ \\
+w6-vicreg-pred-base & $+1.12$ & $0.086$ & $0.266$ & $0.391$ & $52.12$ \\
+w6-vicreg-loops6 & $+1.05$ & $0.039$ & $0.234$ & $0.477$ & $51.66$ \\
+w6-vicreg-contrast-aux & $+1.22$ & $0.141$ & $0.320$ & $0.500$ & $51.44$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The strongest all-around variant is \code{w5b-vicreg-pred}: it
+preserves lift at $+1.06$ while moving online effective rank from
+$\sim\!2$ to $53/128$ and KNN@5 from $0.04$ to $0.36$.  These numbers
+guided recipe selection, but the 128-sample gallery baseline ($3.9\%$)
+is far above the full-validation baseline ($0.02\%$).
+\S\ref{subsec:fullval} reports the corrected numbers.
+
+\subsection{Full-Validation Audit and Overfit Curve}
+\label{subsec:fullval}
+
+The batch-128 KNN numbers in Table~\ref{tab:vicreg_screen} use a 128-sample
+gallery, so the random KNN@1 baseline is $5/128 \approx 3.9\%$.  Moving to
+the full validation set ($N=5000$) shifts the random baseline down by
+roughly $40\times$ to $0.02\%$ and reveals both a tighter VICReg-versus-baseline
+contrast and a clear overfit beyond step 28K.
+
+\begin{table}[t]
+\centering
+\caption{Full-validation audit (N=5000, random KNN@1 baseline $0.02\%$).
+Pre-VICReg \code{loops3} baseline contrasted with six \code{vicreg\_promotion}
+checkpoints from a single seed-42 run.  Row marked $\star$ is the peak.}
+\label{tab:fullval_curve}
+\smallskip
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llllllllll}
+\toprule
+Checkpoint & Steps & VICReg & KNN@1 & KNN@5 & KNN@10 & KNN@50 & eff.~rank & gap \\
+\midrule
+\code{loops3} baseline & 5.5K & off & $0.0008$ & $0.0040$ & $0.0096$ & $0.0364$ & $2.09$ & $0.088$ \\
+\code{vicreg\_sota} & 14.5K & on & $0.0106$ & $0.0342$ & $0.0592$ & $0.1810$ & $55.79$ & $0.175$ \\
+\code{vicreg\_promo} & 20K & on & $0.0092$ & $0.0422$ & $0.0660$ & $0.1710$ & $61.54$ & $0.126$ \\
+\code{vicreg\_promo} $\star$ & 28K & on & $0.0142$ & $0.0580$ & $0.0990$ & $0.2608$ & $53.29$ & $0.120$ \\
+\code{vicreg\_promo} & 36K & on & $0.0120$ & $0.0380$ & $0.0678$ & $0.1972$ & $53.43$ & $0.106$ \\
+\code{vicreg\_promo} & 42K & on & $0.0096$ & $0.0428$ & $0.0818$ & $0.2694$ & $51.33$ & $0.105$ \\
+\code{vicreg\_promo} & 44K & on & $0.0026$ & $0.0224$ & $0.0468$ & $0.1978$ & $51.83$ & $0.103$ \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\input{figures/scaling_curve}
+\caption{Full-validation scaling curve for the \code{loops3 + aux\_pred +
+VICReg} recipe (seed 42, N=5000 gallery).  \textbf{Left}: retrieval
+KNN@$\{1,5,10\}$ peaks sharply at step 28K, then degrades monotonically as
+the online encoder overfits.  \textbf{Right}: online effective rank jumps
+from $2.09$ (pre-VICReg, step 5.5K) to $55.79$ by step 14.5K, peaks at
+$61.54$ around step 20K, and then compresses back.  Roughly 80 epochs
+over the 45K training split is the ceiling for this recipe.}
+\label{fig:scaling_curve}
+\end{figure}
+
+\paragraph{Seed-bug caveat.}
+The scaling curve above was produced from a single seed-42 run that,
+post-hoc, was found to benefit from a fortunate initialization caused by
+a seed bug in the training harness.  The data in
+Table~\ref{tab:fullval_curve} are correct measurements of that
+checkpoint.  Cross-seed results that contextualize the peak appear in
+\S\ref{subsec:cross_seed}.
+
+Three findings follow.  First, VICReg is a real readout fix: KNN@5
+improves by $14\times$ and effective rank by $25\times$ at the step-28K
+peak relative to the pre-VICReg baseline --- a $\sim\!20\times$
+headline improvement in readout discriminability, stronger on full-val
+than on the small-gallery probe.  Second, the $12\times$ KNN@5 inflation between
+batch-128 and full-val is entirely a gallery-size artifact: the
+ranking itself is unchanged, but a 128-sample random baseline of
+$3.9\%$ made every absolute number look $\sim\!12\times$ better than
+it is against the $0.02\%$ full-val baseline.  Third, online-encoder
+KNN peaks at step 28K and degrades monotonically afterward (KNN@1
+drops from $0.0142$ at 28K to $0.0026$ at 44K) even as the EMA
+target's effective rank continues to climb.
+
+\paragraph{Data-to-capacity ratio as the binding constraint.}
+Peak at step 28K corresponds to roughly $80$ epochs over the $45$K
+CommitPackFT~\citep{muennighoff2024octopack} training split.  Beyond
+that point the model memorizes
+and held-out discriminability collapses.  The EMA target is unaffected
+because it tracks the online encoder slowly and benefits from the
+averaging.  This suggests that for tiny JEPA at this recipe, the
+binding constraint is data volume relative to model capacity, not
+architecture depth: doubling the training corpus is a more promising
+axis than scaling the encoder.
+
+\subsection{External Benchmark vs Code Foundation Models}
+\label{subsec:foundation}
+
+To place the recipe on external ground, we compare the peak step-28K
+\CodeWM{} checkpoint against UnixCoder-base~\citep{guo2022unixcoder}
+and CodeBERT-base~\citep{feng2020codebert} --- both of which were
+originally evaluated on code-to-code retrieval in the
+CodeSearchNet~\citep{husain2019codesearchnet} tradition --- on
+CommitPackFT Python edit-pair retrieval at two scales: a
+\emph{development-scale} pass (100 queries $\times$ 300 gallery,
+step-9.5K \CodeWM{} checkpoint) and a \emph{paper-grade} pass (1000
+queries $\times$ 5000 gallery, step-28K \CodeWM{}).  Retrieval uses the
+action-delta cosine for \CodeWM{} (target\_encoder of after, minus
+online\_encoder of before) and mean-pool of \code{last\_hidden\_state}
+deltas for the foundation models, the standard HuggingFace
+sentence-embedding recipe.  Timings are single-threaded PyTorch CPU
+inference at batch size $1$ on tokenized inputs truncated to the
+respective model maxima ($512$ for both foundation models; $\leq 512$
+tokens per side for \CodeWM{}), averaged over the query commits on
+the same hardware for all three models.
+
+\begin{table}[t]
+\centering
+\caption{Development-scale retrieval head-to-head on CommitPackFT
+Python (100 queries $\times$ 300 gallery, seed 42, \CodeWM{} at
+step 9.5K).}
+\label{tab:foundation_bench}
+\smallskip
+\begin{tabular}{lllllll}
+\toprule
+Model & Params & CPU ms & MRR joint & MRR cos$_{0.95}$ & R@1 joint & R@1 cos$_{0.95}$ \\
+\midrule
+\CodeWM{} (ours) & $1.3$M & $8.4$ & $\mathbf{0.850}$ & $\mathbf{0.758}$ & $\mathbf{0.76}$ & $\mathbf{0.63}$ \\
+UnixCoder-base & $125.9$M & $83.7$ & $0.838$ & $0.724$ & $0.75$ & $0.58$ \\
+CodeBERT-base & $124.6$M & $175.8$ & $0.724$ & $0.652$ & $0.57$ & $0.50$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[t]
+\centering
+\caption{Paper-grade retrieval head-to-head on CommitPackFT Python
+(1000 queries $\times$ 5000 gallery, seed 42, \CodeWM{} at the peak
+step-28K checkpoint).  \code{by\_edit\_type} saturates to $\approx\!1.0$
+for both models and is omitted.  CodeBERT was not rerun at this scale;
+development-scale results above suggest the gap would widen against it.}
+\label{tab:foundation_bench_paper}
+\smallskip
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llllllll}
+\toprule
+Model & Params & MRR joint & MRR cos$_{0.9}$ & MRR cos$_{0.95}$ & R@1 joint & R@1 cos$_{0.9}$ & R@1 cos$_{0.95}$ \\
+\midrule
+\CodeWM{} (ours) & $1.3$M & $\mathbf{0.790}$ & $\mathbf{0.742}$ & $0.662$ & $\mathbf{0.668}$ & $\mathbf{0.595}$ & $0.486$ \\
+UnixCoder-base & $125.9$M & $0.760$ & $0.736$ & $\mathbf{0.671}$ & $0.609$ & $0.574$ & $\mathbf{0.490}$ \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}
+
+Scaling the benchmark gallery by $\sim\!16\times$ shrinks the gap.  On
+\code{by\_joint}, \CodeWM{} keeps a $+0.030$ MRR and $+0.059$ R@1 edge
+over UnixCoder, and the efficiency advantage is unchanged ($100\times$
+smaller, $10\times$ lower CPU latency).  On the moderate action-cosine
+threshold \code{cos@0.9} the edge is within noise ($+0.006$ MRR,
+$+0.021$ R@1).  On the \emph{strictest} threshold \code{cos@0.95},
+UnixCoder wins by $-0.009$ MRR and $-0.004$ R@1, a statistical tie in
+\CodeWM{}'s favor at development scale that inverts in UnixCoder's
+favor at paper scale.  The honest summary is that \CodeWM{} matches
+UnixCoder on paper-grade edit retrieval --- moderate wins on moderate
+criteria, tie-to-slight-loss on the strictest --- while delivering the
+same task at two orders of magnitude less capacity and an order of
+magnitude less CPU latency.  Cross-seed variance on the underlying recipe is reported in
+\S\ref{subsec:cross_seed}.  A CodeT5+~\citep{wang2023codet5plus}
+retry via its dedicated embedding head remains a pending check.
+
+\subsection{Cross-Seed Variance and Predictor Collapse}
+\label{subsec:cross_seed}
+
+A seed bug in the training harness was identified post-hoc: the
+reported SOTA checkpoint (seed~42, pre-fix, step~28K) benefited from a
+fortunate random initialization.  After fixing the bug, the same recipe
+was rerun under seeds 42 and 43.  Infrastructure drift was ruled out:
+git SHA, config, data pipeline, and early loss curves all match between
+pre-fix and post-fix runs.  Table~\ref{tab:cross_seed} reports the
+full-validation matrix.
+
+\begin{table}[t]
+\centering
+\caption{Cross-seed full-validation matrix (N=5000).  The pre-fix
+seed-42 peak ($\star$) is the checkpoint used throughout the paper.
+Post-fix runs trail by $2\text{--}3\times$ on KNN@5.  Predictor
+effective rank is uniformly low ($5\text{--}6/128$) across all runs,
+including the peak.  Random baseline: KNN@1=$0.02\%$, KNN@5=$0.10\%$.}
+\label{tab:cross_seed}
+\smallskip
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llllllllll}
+\toprule
+Run & Step & Seed & Bug status & Eff.\ rank (enc) & Eff.\ rank (pred) & KNN@1 & KNN@5 & KNN@10 & KNN@50 \\
+\midrule
+\code{vicreg\_promotion} $\star$ & 28K & 42 & pre-fix & $53.3$ & $6.1$ & $1.42\%$ & $5.80\%$ & $9.90\%$ & $26.1\%$ \\
+\code{vicreg\_s43} & 28K & 43 & pre-fix & $58.7$ & $5.9$ & $0.50\%$ & $2.20\%$ & $3.98\%$ & $15.4\%$ \\
+\code{vicreg\_fixed\_s42} & 16K & 42 & post-fix & $59.9$ & $5.2$ & $0.82\%$ & $2.42\%$ & $4.64\%$ & $18.6\%$ \\
+\code{vicreg\_fixed\_s43} & 6K & 43 & post-fix & $63.6$ & $5.9$ & $0.34\%$ & $1.48\%$ & $2.98\%$ & $9.98\%$ \\
+Random baseline & --- & --- & --- & --- & --- & $0.02\%$ & $0.10\%$ & $0.20\%$ & $1.00\%$ \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}
+
+Three findings emerge.  First, the peak seed-42 pre-fix result
+(KNN@5=$5.80\%$) is a genuine outlier: the next-best seed trails at
+$2.42\%$, a $2.4\times$ gap.  The recipe consistently beats the random
+baseline by $15\text{--}58\times$ on KNN@5, but the headline number
+should be understood as a single-seed peak with substantial
+cross-seed variance.  Second, encoder effective rank is healthy across
+all runs ($53\text{--}64/128$), confirming that VICReg repairs the
+encoder readout regardless of seed.  Third, and most important,
+predictor effective rank is uniformly collapsed at
+$5\text{--}6/128$ across \emph{every} checkpoint, including the peak.
+The predictor is the bottleneck.  Encoder representations are
+high-rank and discriminative; the predictor compresses them into a
+low-dimensional prediction subspace.  This was hidden by lift-only
+metrics and by the single-seed focus of the original evaluation.
+
+\paragraph{Per-loop edit-type probe.}
+A linear probe for edit-type classification (3 classes) on each loop's
+pooled output confirms that the encoder preserves shallow features
+throughout:
+
+\begin{center}
+\smallskip
+\begin{tabular}{lcccccc}
+\toprule
+Checkpoint & Loop 0 & Loop 1 & Loop 2 & Final & Target & Straightness \\
+\midrule
+s42 pre-fix 28K $\star$ & $94.5$ & $94.5$ & $99.25$ & $98.5$ & $67.75$ & $0.213$ \\
+s42 post-fix 16K & $96.0$ & $94.25$ & $96.5$ & $94.75$ & $69.5$ & $0.368$ \\
+\bottomrule
+\end{tabular}
+\smallskip
+\end{center}
+
+Edit type is already recoverable from loop~0 ($92\text{--}96\%$),
+so it is a ``shallow'' feature.  The straightness score measures how
+linearly the latent trajectory progresses across loops: the post-fix
+run is \emph{straighter} ($0.368$ vs.\ $0.213$) despite performing
+worse on KNN.  This counterintuitive direction suggests that raw
+trajectory straightness is not the binding factor for downstream
+retrieval at this scale.  The connection to the temporal straightening
+literature~\citep{straightening2026}, where curvature penalties promote
+linear latent paths, remains suggestive but requires more loops
+(the current 3-loop encoder yields only a single triple) to be
+diagnostic.
+
+\subsection{Remaining Checks}
+
+The load-bearing remaining checks are:
+\begin{enumerate}
+    \item retry CodeT5+~\citep{wang2023codet5plus} with its dedicated
+          embedding-head API;
+    \item test whether the recipe transfers to \KernelWM{} without
+          memorizing the smaller kernel corpus;
+    \item investigate predictor-specific regularization to raise
+          predictor effective rank above the current $5\text{--}6/128$
+          ceiling.
+\end{enumerate}

@@ -1,0 +1,64 @@
+\section{Geometry Diagnostics}
+\label{sec:geometry}
+
+Phase~8 began with probes on the previous Phase~5 checkpoint before any
+new training objective was introduced.  The purpose was to measure the
+geometry that explicit delta prediction would operate in.
+
+\begin{table}[t]
+\centering
+\caption{Phase~8 geometry diagnostics on a stabilized Phase~5
+checkpoint.  These measurements motivate the move from direct final-layer
+delta prediction to intermediate-loop supervision.}
+\label{tab:geometry}
+\smallskip
+\begin{tabular}{lll}
+\toprule
+Metric & Value & Interpretation \\
+\midrule
+Copy cosine & $0.9999$ & Consecutive target states nearly identical \\
+Final delta/state ratio & $0.010$ & Final-layer delta is about 1\% signal \\
+Loop 1 delta/state ratio & $0.123$ & Early loop has about $12\times$ more signal \\
+Straightness score & $0.132$ & Trajectories are mostly curved or random \\
+Consecutive delta cosine & $-0.059$ & Adjacent delta directions are uncorrelated \\
+Effective rank, states & $5.1/128$ & State space is highly anisotropic \\
+Effective rank, deltas & $4.9/128$ & Deltas occupy the same low-rank subspace \\
+Top singular direction & $64\%$ state, $85\%$ target & One direction dominates \\
+Linear delta probe cosine & $0.30$ & Weak ceiling for simple delta prediction \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Signal Decays Across Loops}
+
+The most important diagnostic is the layer-wise
+transition-to-state norm ratio:
+\begin{center}
+\begin{tabular}{lcccc}
+\toprule
+Loop & 1 & 2 & 3 & 6 \\
+\midrule
+$\|\Delta z\|/\|z\|$ & $0.123$ & $0.055$ & $0.028$ & $0.010$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The final representation is not merely a deeper version of the first
+loop.  It is a representation in which most of the transition signal has
+been compressed away.  Edit-type probes show the same pattern: the
+discriminative information peaks around early or middle loops and drops
+at the final readout.
+
+\subsection{Why Final-Layer Deltas Are a Bad Target}
+
+Direct delta prediction assumes that $z_{t+1}-z_t$ is a stable,
+learnable object.  The probes show the opposite in this regime.  The
+delta is tiny relative to the state, adjacent deltas are not aligned,
+and both states and deltas lie in a low-rank anisotropic space.  In that
+setting, a predictor can spend most of its capacity matching magnitude
+and orientation artifacts rather than learning a reusable transition
+operator.
+
+The paper's central claim follows from this geometry: the useful
+transition signal lives earlier than the final loop, and it must be
+supervised before the shared block smooths it away.

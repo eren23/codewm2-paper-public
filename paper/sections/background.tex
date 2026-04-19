@@ -1,0 +1,97 @@
+\section{Background}
+\label{sec:background}
+
+\subsection{From Stabilization to Geometry}
+
+\CodeWM{} uses a JEPA-style latent prediction setup
+\citep{assran2023ijepa}.  An online encoder maps the pre-edit code state
+$s_t$ to $z_t = f_\theta(s_t)$, an action encoder maps the edit action
+$a_t$ into the same latent space, and a predictor estimates the next
+target state $\hat{z}_{t+1} = g_\phi(z_t, h_\psi(a_t))$.  The target is
+produced by a stop-gradient target encoder
+$z_{t+1}^{\mathrm{tar}} = f_{\bar{\theta}}(s_{t+1})$ whose parameters are
+maintained by EMA.
+
+The first \CodeWM{} paper found that the target update rule dominates
+training stability in this small-model regime.  With fast EMA tracking,
+the target encoder collapses and consecutive states become almost
+identical under the target representation.  The leading indicator is:
+\begin{equation}
+    \copycos =
+    \mathbb{E}_t\left[
+    \cos\left(f_{\bar{\theta}}(s_t),
+              f_{\bar{\theta}}(s_{t+1})\right)\right].
+    \label{eq:copycos}
+\end{equation}
+When this value approaches 1, simply copying the previous target state is
+nearly as good as predicting the next one.  Holding the target encoder
+near-static with EMA decay $0.99999$ prevents that collapse and enables
+longer training~\citep{akbulut2026collapse}.
+
+The present work keeps that stabilized regime fixed and examines the
+encoder's internal geometry.  The central distinction is between
+\emph{training stability} and \emph{transition signal preservation}.
+The first paper showed how to keep training alive; this paper shows that
+a stable final representation can still discard much of the information
+needed for explicit state-space deltas.
+
+\subsection{Looped Encoders}
+
+The encoder is weight-shared: a single transformer block is applied
+repeatedly.  If $X_0$ is the embedded code sequence, then:
+\begin{equation}
+    X_\ell = \mathcal{T}_{\theta}(X_{\ell-1}),
+    \quad \ell = 1,\ldots,L.
+    \label{eq:looped_encoder}
+\end{equation}
+The original stabilized recipe used $L=6$ loops.  Weight sharing gives
+depth at low parameter count, but it also means the same smoothing
+operator is repeatedly applied.  Phase~8 probes indicate that this
+recursion progressively compresses the edit signal.
+
+\subsection{Prediction, Direction, Aux Losses, and VICReg}
+
+The stabilized baseline optimizes prediction to the target embedding and
+directional consistency in latent displacement:
+\begin{align}
+    \mathcal{L}_{\mathrm{pred}}
+    &= 1 - \cos(\hat{z}_{t+1}, \operatorname{sg}[z_{t+1}^{\mathrm{tar}}]), \\
+    \mathcal{L}_{\mathrm{dir}}
+    &= 1 - \cos(\hat{z}_{t+1} - z_t,\,
+                \operatorname{sg}[z_{t+1}^{\mathrm{tar}}] - z_t).
+\end{align}
+Phase~9 adds auxiliary supervision at intermediate loop outputs:
+\begin{equation}
+    \mathcal{L}
+    =
+    \mathcal{L}_{\mathrm{final}}
+    + \lambda_{\mathrm{aux}}
+      \sum_{\ell \in \mathcal{A}_{\mathrm{loops}}}
+      \mathcal{L}_{\mathrm{aux}}^{(\ell)}.
+    \label{eq:aux_loss}
+\end{equation}
+The first successful Phase~9 variant uses predictive auxiliary losses
+rather than contrastive auxiliary losses.  In the current recipe,
+$\mathcal{A}_{\mathrm{loops}}=\{1,2\}$ and
+$\lambda_{\mathrm{aux}}=0.3$.
+
+The later readout-collapse diagnostic makes the final regularizer
+load-bearing.  The current best configuration replaces the old
+readout regularization with a VICReg-style objective~\citep{bardes2022vicreg}
+that combines invariance, per-dimension variance, and covariance
+decorrelation terms.  This matters because cosine prediction and lift can
+look strong even when the pooled representation occupies only a tiny
+subspace.  We therefore report lift alongside effective rank and KNN
+retrieval over validation embeddings.
+
+\paragraph{Related latent-dynamics objectives.}
+Concurrent work from the original JEPA
+group~\citep{straightening2026} adds a curvature penalty to
+JEPA-style latent planning, encouraging linearly interpolable
+trajectories.  JEPA-Reasoner~\citep{jepareasoner2025}
+reinterprets looped encoder blocks as latent reasoning steps, with
+intermediate supervision as ``latent chain-of-thought'' training.
+Both framings are complementary to the present recipe: VICReg can be
+viewed as a discrete curvature penalty, and predictive auxiliary losses
+at intermediate loops are a form of supervision on latent reasoning
+steps.

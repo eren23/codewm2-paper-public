@@ -1,0 +1,70 @@
+% Scaling curve for tab:fullval_curve — PGFPlots.
+% Data: full-val N=5000 on seed-42 loops3+aux_pred+VICReg+EMA 0.99999.
+\begin{tikzpicture}
+\begin{axis}[
+    name=leftplot,
+    width=0.5\textwidth,
+    height=4.4cm,
+    xlabel={Training step (K)},
+    ylabel={Full-val KNN@$k$},
+    xmin=0, xmax=48,
+    ymin=0, ymax=0.11,
+    ytick={0,0.02,0.04,0.06,0.08,0.10},
+    xtick={5.5,14.5,20,28,36,42,44},
+    xticklabel style={font=\scriptsize},
+    yticklabel style={font=\scriptsize},
+    xlabel style={font=\small},
+    ylabel style={font=\small},
+    grid=major,
+    grid style={dashed, gray!25},
+    legend pos=north east,
+    legend style={font=\scriptsize, fill=white, fill opacity=0.85, draw=none, inner sep=2pt},
+    legend cell align={left},
+    axis line style={-},
+    tick align=outside,
+    enlargelimits=false,
+    clip marker paths=true,
+]
+\addplot+[mark=o, thick, color=blue!80!black]
+    coordinates {(5.5,0.0008) (14.5,0.0106) (20,0.0092) (28,0.0142) (36,0.0120) (42,0.0096) (44,0.0026)};
+\addlegendentry{KNN@1}
+\addplot+[mark=square*, thick, color=green!50!black]
+    coordinates {(5.5,0.0040) (14.5,0.0342) (20,0.0422) (28,0.0580) (36,0.0380) (42,0.0428) (44,0.0224)};
+\addlegendentry{KNN@5}
+\addplot+[mark=triangle*, thick, color=red!80!black]
+    coordinates {(5.5,0.0096) (14.5,0.0592) (20,0.0660) (28,0.0990) (36,0.0678) (42,0.0818) (44,0.0468)};
+\addlegendentry{KNN@10}
+\draw[dashed, gray!60] (axis cs:28,0) -- (axis cs:28,0.11);
+\node[gray!70!black, anchor=south west, font=\scriptsize] at (axis cs:28.5,0.095) {peak};
+\draw[dotted, gray!60] (axis cs:5.5,0) -- (axis cs:5.5,0.11);
+\node[gray!70!black, anchor=south west, font=\scriptsize] at (axis cs:5.8,0.095) {pre-VICReg};
+\end{axis}
+
+\begin{axis}[
+    at={($(leftplot.east)+(1.1cm,0)$)}, anchor=west,
+    width=0.5\textwidth,
+    height=4.4cm,
+    xlabel={Training step (K)},
+    ylabel={Online effective rank},
+    xmin=0, xmax=48,
+    ymin=0, ymax=130,
+    ytick={0,32,64,96,128},
+    xtick={5.5,14.5,20,28,36,42,44},
+    xticklabel style={font=\scriptsize},
+    yticklabel style={font=\scriptsize},
+    xlabel style={font=\small},
+    ylabel style={font=\small},
+    grid=major,
+    grid style={dashed, gray!25},
+    axis line style={-},
+    tick align=outside,
+    enlargelimits=false,
+]
+\addplot+[mark=o, thick, color=violet]
+    coordinates {(5.5,2.09) (14.5,55.79) (20,61.54) (28,53.29) (36,53.43) (42,51.33) (44,51.83)};
+\draw[dashed, gray!60] (axis cs:28,0) -- (axis cs:28,130);
+\draw[dotted, gray!60] (axis cs:5.5,0) -- (axis cs:5.5,130);
+\draw[gray!50, thin] (axis cs:0,128) -- (axis cs:48,128);
+\node[gray!70!black, anchor=south east, font=\scriptsize] at (axis cs:46,121) {dim = 128};
+\end{axis}
+\end{tikzpicture}
