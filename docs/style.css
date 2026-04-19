@@ -656,6 +656,209 @@ ol, ul { margin: 0; padding: 0; list-style: none; }
 }
 .cite pre code { color: inherit; font-family: inherit; }
 
+/* ───────── interactive demo ───────── */
+.demo__presets {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: .5rem;
+  margin-bottom: 1.6rem;
+}
+@media (max-width: 700px) {
+  .demo__presets { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 420px) {
+  .demo__presets { grid-template-columns: 1fr; }
+}
+.demo__preset {
+  background: var(--bg-card);
+  border: 1px solid var(--rule-soft);
+  padding: .7rem .8rem;
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--mono);
+  transition: border-color 140ms linear, background 140ms linear;
+}
+.demo__preset:hover {
+  border-color: var(--accent-dim);
+  background: var(--bg-raise);
+}
+.demo__preset--active {
+  border-color: var(--accent);
+  border-left: 2px solid var(--accent);
+}
+.demo__preset-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink);
+  margin-bottom: .2rem;
+}
+.demo__preset-desc {
+  display: block;
+  font-size: 10px;
+  color: var(--ink-faint);
+  letter-spacing: .02em;
+}
+
+.demo__panel {
+  background: var(--bg-card);
+  border: 1px solid var(--rule-soft);
+  margin-bottom: .85rem;
+  overflow: hidden;
+}
+.demo__panel-header {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  padding: .5rem .8rem;
+  border-bottom: 1px solid var(--rule-soft);
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-faint);
+  letter-spacing: .04em;
+  text-transform: lowercase;
+  background: var(--bg-raise);
+}
+.demo__panel-tag {
+  color: var(--accent);
+  font-weight: 500;
+  letter-spacing: .1em;
+}
+
+.demo__code-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+}
+@media (max-width: 640px) {
+  .demo__code-pair { grid-template-columns: 1fr; }
+}
+.demo__code-col {
+  display: flex;
+  flex-direction: column;
+}
+.demo__code-col:first-child {
+  border-right: 1px solid var(--rule-soft);
+}
+@media (max-width: 640px) {
+  .demo__code-col:first-child {
+    border-right: none;
+    border-bottom: 1px solid var(--rule-soft);
+  }
+}
+.demo__code-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--ink-faint);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  padding: .3rem .8rem;
+  border-bottom: 1px solid var(--rule-soft);
+  background: var(--bg);
+}
+.demo__code {
+  width: 100%;
+  min-height: 160px;
+  padding: .6rem .8rem;
+  background: var(--bg);
+  color: var(--ink-soft);
+  border: none;
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.55;
+  resize: vertical;
+  outline: none;
+}
+.demo__code:focus {
+  background: var(--bg-raise);
+  color: var(--ink);
+}
+
+/* embedding heatmap */
+.demo__heatrow {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .3rem .8rem;
+}
+.demo__heatlabel {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--ink-faint);
+  letter-spacing: .06em;
+  width: 3.5rem;
+  flex-shrink: 0;
+  text-align: right;
+}
+.demo__heatcells {
+  display: flex;
+  gap: 1px;
+  flex: 1;
+  min-width: 0;
+}
+.demo__heatcell {
+  flex: 1;
+  height: 14px;
+  min-width: 0;
+  border-radius: 1px;
+}
+
+/* cosine gauge */
+.demo__gauge-wrap {
+  padding: .8rem .8rem .3rem;
+}
+.demo__gauge-bar {
+  position: relative;
+  height: 8px;
+  background: var(--bg);
+  border-radius: 4px;
+  overflow: visible;
+}
+.demo__gauge-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 4px;
+  transition: width 300ms ease;
+}
+.demo__gauge-labels {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--ink-faint);
+  padding-top: .25rem;
+}
+.demo__gauge-readout {
+  display: flex;
+  align-items: baseline;
+  gap: .6rem;
+  padding: .4rem .8rem .8rem;
+}
+.demo__cos-value {
+  font-family: var(--mono);
+  font-size: 28px;
+  font-weight: 500;
+  color: var(--accent);
+  letter-spacing: -.02em;
+}
+.demo__cos-label {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-faint);
+  letter-spacing: .04em;
+}
+
+/* status bar */
+.demo__status {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-faint);
+  padding: .6rem .8rem;
+  background: var(--bg-raise);
+  border: 1px solid var(--rule-soft);
+  letter-spacing: .02em;
+}
+
 /* ───────── footer ───────── */
 .foot {
   margin-top: 3rem;

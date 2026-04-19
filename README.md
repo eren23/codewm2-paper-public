@@ -70,7 +70,8 @@ chmod +x render_story.sh && ./render_story.sh
 
 All runs reported in the paper are logged to Weights & Biases:
 
-<https://wandb.ai/eren23/crucible-code-wm/workspace?nw=nwusereren23>
+- Phases 1-8: <https://wandb.ai/eren23/crucible-code-wm/workspace?nw=nwusereren23>
+- Phase 9 (VICReg): <https://wandb.ai/eren23/crucible-wm-phase9>
 
 ## License
 
