@@ -492,75 +492,99 @@ WM_EMA_DECAY=0.99999</code></pre>
     <!-- ═══════════════════════════════════════════════════ demo -->
     <section class="block demo" id="demo" aria-labelledby="demo-title">
       <h2 class="block__title" id="demo-title">
-        <span class="block__hash">0x08</span> Try it
+        <span class="block__hash">0x08</span> Try it &mdash; transition prediction
       </h2>
       <p class="block__lede">
-        The v2 Code WM pipeline running in your browser via WebAssembly.
-        Pick a preset or edit the code &mdash; the AST tokenizer and
-        VICReg-enhanced 1.3&thinsp;M-parameter encoder run live, showing
-        how the model sees structural similarity between edits.
+        The world model predicts what code looks like <em>after</em> an edit,
+        without seeing the result. Enter before &amp; after code, pick an
+        action type &mdash; the predictor outputs a next-state embedding
+        and we compare it to the actual after-state. <strong>Lift</strong>
+        over the copy baseline is the metric that matters.
       </p>
 
+      <!-- edit presets -->
       <div class="demo__presets">
         <button class="demo__preset demo__preset--active" type="button" data-idx="0">
           <span class="demo__preset-label">Rename refactor</span>
-          <span class="demo__preset-desc">Same algorithm, renamed identifiers</span>
+          <span class="demo__preset-desc">Same logic, renamed identifiers</span>
         </button>
         <button class="demo__preset" type="button" data-idx="1">
-          <span class="demo__preset-label">Logic rewrite</span>
-          <span class="demo__preset-desc">Same purpose, different algorithm</span>
+          <span class="demo__preset-label">Add feature</span>
+          <span class="demo__preset-desc">Extend with new functionality</span>
         </button>
         <button class="demo__preset" type="button" data-idx="2">
-          <span class="demo__preset-label">Comments only</span>
-          <span class="demo__preset-desc">Docstrings added, identical AST</span>
+          <span class="demo__preset-label">Bug fix</span>
+          <span class="demo__preset-desc">Fix off-by-one error</span>
         </button>
         <button class="demo__preset" type="button" data-idx="3">
-          <span class="demo__preset-label">Subtle bug fix</span>
-          <span class="demo__preset-desc">One-line fix, structural change</span>
-        </button>
-        <button class="demo__preset" type="button" data-idx="4">
-          <span class="demo__preset-label">Completely different</span>
-          <span class="demo__preset-desc">Sorting vs HTTP client</span>
+          <span class="demo__preset-label">Major rewrite</span>
+          <span class="demo__preset-desc">Different algorithm entirely</span>
         </button>
       </div>
 
-      <!-- code panels -->
+      <!-- code pair -->
       <div class="demo__panel">
-        <div class="demo__panel-header"><span class="demo__panel-tag">SRC</span> python</div>
+        <div class="demo__panel-header"><span class="demo__panel-tag">SRC</span> before &amp; after edit</div>
         <div class="demo__code-pair">
           <div class="demo__code-col">
-            <label class="demo__code-label" for="demo-code-before">before</label>
-            <textarea class="demo__code" id="demo-code-before" spellcheck="false" rows="9"></textarea>
+            <label class="demo__code-label" for="demo-before">before</label>
+            <textarea class="demo__code" id="demo-before" spellcheck="false" rows="9"></textarea>
           </div>
           <div class="demo__code-col">
-            <label class="demo__code-label" for="demo-code-after">after</label>
-            <textarea class="demo__code" id="demo-code-after" spellcheck="false" rows="9"></textarea>
+            <label class="demo__code-label" for="demo-after">after</label>
+            <textarea class="demo__code" id="demo-after" spellcheck="false" rows="9"></textarea>
           </div>
         </div>
       </div>
 
-      <!-- embeddings -->
+      <!-- action presets -->
       <div class="demo__panel">
-        <div class="demo__panel-header"><span class="demo__panel-tag">EMB</span> 128-d latent</div>
-        <div class="demo__heatrow"><span class="demo__heatlabel">before</span><div class="demo__heatcells" id="demo-emb-before"></div></div>
-        <div class="demo__heatrow"><span class="demo__heatlabel">after</span><div class="demo__heatcells" id="demo-emb-after"></div></div>
-        <div class="demo__heatrow"><span class="demo__heatlabel">diff</span><div class="demo__heatcells" id="demo-emb-diff"></div></div>
-      </div>
-
-      <!-- similarity -->
-      <div class="demo__panel">
-        <div class="demo__panel-header"><span class="demo__panel-tag">COS</span> similarity</div>
-        <div class="demo__gauge-wrap">
-          <div class="demo__gauge-bar"><div class="demo__gauge-fill" id="demo-gauge-fill" style="width:0"></div></div>
-          <div class="demo__gauge-labels"><span>0.0</span><span>0.25</span><span>0.50</span><span>0.75</span><span>1.0</span></div>
-        </div>
-        <div class="demo__gauge-readout">
-          <span class="demo__cos-value" id="demo-cos-value">&mdash;</span>
-          <span class="demo__cos-label" id="demo-cos-label">cosine similarity</span>
+        <div class="demo__panel-header"><span class="demo__panel-tag">ACT</span> action vector (edit descriptor)</div>
+        <div class="demo__action-row">
+          <div class="demo__action-presets">
+            <button class="demo__action-btn demo__action-btn--active" data-action="0,0,1,0,0,0,0,0.5,0,0,0,0,0,0,0">modify</button>
+            <button class="demo__action-btn" data-action="1,0,0,0,0,0,0,0.5,0,0,0,0,0,0,0">insert</button>
+            <button class="demo__action-btn" data-action="0,1,0,0,0,0,0,0.5,0,0,0,0,0,0,0">delete</button>
+            <button class="demo__action-btn" data-action="1,0,1,0,0,0,0,0.2,0,0,0,0,0,0,0">refactor</button>
+          </div>
+          <button class="demo__predict-btn" id="demo-predict" disabled>Predict transition</button>
         </div>
       </div>
 
-      <!-- status -->
+      <!-- results: two gauges side by side -->
+      <div class="demo__results" id="demo-results" style="display:none">
+        <div class="demo__panel">
+          <div class="demo__panel-header"><span class="demo__panel-tag">PRED</span> transition prediction vs copy baseline</div>
+          <div class="demo__dual-gauge">
+            <div class="demo__gauge-col">
+              <div class="demo__gauge-title">prediction cosine</div>
+              <div class="demo__gauge-big" id="demo-pred-cos">&mdash;</div>
+              <div class="demo__gauge-sub">cos(predicted, actual)</div>
+              <div class="demo__mini-bar"><div class="demo__mini-fill" id="demo-pred-fill"></div></div>
+            </div>
+            <div class="demo__gauge-col">
+              <div class="demo__gauge-title">copy baseline</div>
+              <div class="demo__gauge-big demo__gauge-big--dim" id="demo-copy-cos">&mdash;</div>
+              <div class="demo__gauge-sub">cos(before, after)</div>
+              <div class="demo__mini-bar"><div class="demo__mini-fill demo__mini-fill--dim" id="demo-copy-fill"></div></div>
+            </div>
+            <div class="demo__gauge-col demo__gauge-col--lift">
+              <div class="demo__gauge-title">lift</div>
+              <div class="demo__gauge-big" id="demo-lift">&mdash;</div>
+              <div class="demo__gauge-sub">prediction &minus; copy</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- predicted vs actual heatmaps -->
+        <div class="demo__panel">
+          <div class="demo__panel-header"><span class="demo__panel-tag">EMB</span> predicted vs actual next-state</div>
+          <div class="demo__heatrow"><span class="demo__heatlabel">predicted</span><div class="demo__heatcells" id="demo-emb-pred"></div></div>
+          <div class="demo__heatrow"><span class="demo__heatlabel">actual</span><div class="demo__heatcells" id="demo-emb-actual"></div></div>
+          <div class="demo__heatrow"><span class="demo__heatlabel">error</span><div class="demo__heatcells" id="demo-emb-error"></div></div>
+        </div>
+      </div>
+
       <div class="demo__status" id="demo-status">
         scroll here to load the wasm model for live inference
       </div>
@@ -569,39 +593,36 @@ WM_EMA_DECAY=0.99999</code></pre>
     <script type="module">
       import init, { WasmCodeWM, tokenize_python } from "./wasm/synapse_wasm.js";
 
-      const PRESETS = [
+      var PRESETS = [
         {
           before: "def quicksort(arr):\n    if len(arr) <= 1:\n        return arr\n    pivot = arr[len(arr) // 2]\n    left = [x for x in arr if x < pivot]\n    mid = [x for x in arr if x == pivot]\n    right = [x for x in arr if x > pivot]\n    return quicksort(left) + mid + quicksort(right)",
           after: "def fast_sort(data):\n    if len(data) <= 1:\n        return data\n    mid_val = data[len(data) // 2]\n    lo = [x for x in data if x < mid_val]\n    eq = [x for x in data if x == mid_val]\n    hi = [x for x in data if x > mid_val]\n    return fast_sort(lo) + eq + fast_sort(hi)",
-        },
-        {
-          before: "def quicksort(arr):\n    if len(arr) <= 1:\n        return arr\n    pivot = arr[len(arr) // 2]\n    left = [x for x in arr if x < pivot]\n    mid = [x for x in arr if x == pivot]\n    right = [x for x in arr if x > pivot]\n    return quicksort(left) + mid + quicksort(right)",
-          after: "def merge_sort(arr):\n    if len(arr) <= 1:\n        return arr\n    mid = len(arr) // 2\n    left = merge_sort(arr[:mid])\n    right = merge_sort(arr[mid:])\n    merged = []\n    i = j = 0\n    while i < len(left) and j < len(right):\n        if left[i] <= right[j]:\n            merged.append(left[i])\n            i += 1\n        else:\n            merged.append(right[j])\n            j += 1\n    merged.extend(left[i:])\n    merged.extend(right[j:])\n    return merged",
+          action: "0,0,1,0,0,0,0,0.5,0,0,0,0,0,0,0",
         },
         {
           before: "def fibonacci(n):\n    a, b = 0, 1\n    for _ in range(n):\n        a, b = b, a + b\n    return a",
-          after: "def fibonacci(n):\n    \"\"\"Return the n-th Fibonacci number.\n\n    Uses iterative approach for O(n) time, O(1) space.\n    \"\"\"\n    # base cases handled by the loop naturally\n    a, b = 0, 1\n    for _ in range(n):\n        a, b = b, a + b  # simultaneous assignment\n    return a",
+          after: "def fibonacci(n, memo={}):\n    if n in memo:\n        return memo[n]\n    if n <= 1:\n        return n\n    result = fibonacci(n - 1, memo) + fibonacci(n - 2, memo)\n    memo[n] = result\n    return result",
+          action: "1,0,1,0,0,0,0,0.5,0,0,0,0,0,0,0",
         },
         {
           before: "def binary_search(arr, target):\n    lo, hi = 0, len(arr) - 1\n    while lo <= hi:\n        mid = (lo + hi) // 2\n        if arr[mid] == target:\n            return mid\n        elif arr[mid] < target:\n            lo = mid + 1\n        else:\n            hi = mid - 1\n    return -1",
           after: "def binary_search(arr, target):\n    lo, hi = 0, len(arr)\n    while lo < hi:\n        mid = lo + (hi - lo) // 2\n        if arr[mid] == target:\n            return mid\n        elif arr[mid] < target:\n            lo = mid + 1\n        else:\n            hi = mid\n    return -1",
+          action: "0,0,1,0,0,0,0,0.3,0,0,0,0,0,0,0",
         },
         {
           before: "def quicksort(arr):\n    if len(arr) <= 1:\n        return arr\n    pivot = arr[len(arr) // 2]\n    left = [x for x in arr if x < pivot]\n    mid = [x for x in arr if x == pivot]\n    right = [x for x in arr if x > pivot]\n    return quicksort(left) + mid + quicksort(right)",
-          after: "import requests\n\ndef fetch_json(url, timeout=10):\n    resp = requests.get(url, timeout=timeout)\n    resp.raise_for_status()\n    return resp.json()\n\ndef post_data(url, payload):\n    resp = requests.post(url, json=payload)\n    resp.raise_for_status()\n    return resp.status_code",
+          after: "def merge_sort(arr):\n    if len(arr) <= 1:\n        return arr\n    mid = len(arr) // 2\n    left = merge_sort(arr[:mid])\n    right = merge_sort(arr[mid:])\n    merged = []\n    i = j = 0\n    while i < len(left) and j < len(right):\n        if left[i] <= right[j]:\n            merged.append(left[i])\n            i += 1\n        else:\n            merged.append(right[j])\n            j += 1\n    merged.extend(left[i:])\n    merged.extend(right[j:])\n    return merged",
+          action: "1,1,1,0,0,0,0,0.8,0,0,0,0,0,0,0",
         },
       ];
 
       var model = null;
+      var currentAction = "0,0,1,0,0,0,0,0.5,0,0,0,0,0,0,0";
       var statusEl = document.getElementById("demo-status");
-      var beforeEl = document.getElementById("demo-code-before");
-      var afterEl = document.getElementById("demo-code-after");
-      var cosValEl = document.getElementById("demo-cos-value");
-      var cosLabelEl = document.getElementById("demo-cos-label");
-      var gaugeFill = document.getElementById("demo-gauge-fill");
-      var embBeforeEl = document.getElementById("demo-emb-before");
-      var embAfterEl = document.getElementById("demo-emb-after");
-      var embDiffEl = document.getElementById("demo-emb-diff");
+      var beforeEl = document.getElementById("demo-before");
+      var afterEl = document.getElementById("demo-after");
+      var predictBtn = document.getElementById("demo-predict");
+      var resultsEl = document.getElementById("demo-results");
 
       function clearEl(el) { while (el.firstChild) el.removeChild(el.firstChild); }
 
@@ -621,12 +642,18 @@ WM_EMA_DECAY=0.99999</code></pre>
         return d;
       }
 
-      function verdict(cos) {
-        if (cos >= 0.95) return "near-identical structure";
-        if (cos >= 0.85) return "structurally similar";
-        if (cos >= 0.65) return "related but different";
-        if (cos >= 0.40) return "loosely related";
-        return "unrelated";
+      function encodeCode(code) {
+        var tok = tokenize_python(code, model.max_seq_len());
+        var tok_i32 = new Int32Array(tok.length);
+        for (var i = 0; i < tok.length; i++) tok_i32[i] = tok[i];
+        return model.encode(tok_i32);
+      }
+
+      function parseAction(str) {
+        var vals = str.split(",").map(function(s) { return parseFloat(s.trim()); });
+        var adim = model.action_dim();
+        while (vals.length < adim) vals.push(0);
+        return new Float32Array(vals.slice(0, adim));
       }
 
       function renderHeatmap(container, values) {
@@ -645,53 +672,97 @@ WM_EMA_DECAY=0.99999</code></pre>
         }
       }
 
-      function runCompare() {
+      function runPredict() {
         if (!model) return;
         var codeBefore = beforeEl.value;
         var codeAfter = afterEl.value;
         if (!codeBefore.trim() || !codeAfter.trim()) return;
 
         var t0 = performance.now();
-        var tokB = tokenize_python(codeBefore, model.max_seq_len());
-        var tokA = tokenize_python(codeAfter, model.max_seq_len());
-        var tokB_i32 = new Int32Array(tokB.length);
-        for (var i = 0; i < tokB.length; i++) tokB_i32[i] = tokB[i];
-        var tokA_i32 = new Int32Array(tokA.length);
-        for (var i = 0; i < tokA.length; i++) tokA_i32[i] = tokA[i];
 
-        var zB = l2norm(model.encode(tokB_i32));
-        var zA = l2norm(model.encode(tokA_i32));
-        var cos = cosine(zB, zA);
+        // encode before state
+        var zBefore = encodeCode(codeBefore);
+        // encode action
+        var actionF32 = parseAction(currentAction);
+        var zAction = model.encode_action(actionF32);
+        // predict next state
+        var zPredicted = model.predict(new Float32Array(zBefore), new Float32Array(zAction));
+        // encode actual after state
+        var zActual = encodeCode(codeAfter);
+
         var t1 = performance.now();
 
-        cosValEl.textContent = cos.toFixed(4);
-        cosLabelEl.textContent = verdict(cos) + " \u00B7 " + (t1-t0).toFixed(0) + "ms";
-        gaugeFill.style.width = (Math.max(0, cos) * 100) + "%";
-        gaugeFill.style.background = cos >= 0.85 ? "var(--accent)" : cos >= 0.5 ? "#e6c54d" : "var(--flame)";
+        // normalize for cosine
+        var predNorm = l2norm(new Float32Array(zPredicted));
+        var actualNorm = l2norm(new Float32Array(zActual));
+        var beforeNorm = l2norm(new Float32Array(zBefore));
 
-        renderHeatmap(embBeforeEl, zB);
-        renderHeatmap(embAfterEl, zA);
-        var diff = new Float32Array(zB.length);
-        for (var i = 0; i < zB.length; i++) diff[i] = zA[i] - zB[i];
-        renderHeatmap(embDiffEl, diff);
+        // prediction cosine: how well did the model predict?
+        var predCos = cosine(predNorm, actualNorm);
+        // copy baseline: just using the before-state as "prediction"
+        var copyCos = cosine(beforeNorm, actualNorm);
+        // lift: prediction - copy
+        var lift = predCos - copyCos;
 
-        statusEl.textContent = "v2 vicreg_promotion \u00B7 " + tokB.length + " + " + tokA.length + " tokens \u00B7 " + (t1-t0).toFixed(0) + "ms total";
+        // show results
+        resultsEl.style.display = "";
+
+        document.getElementById("demo-pred-cos").textContent = predCos.toFixed(4);
+        document.getElementById("demo-copy-cos").textContent = copyCos.toFixed(4);
+
+        var liftEl = document.getElementById("demo-lift");
+        liftEl.textContent = (lift >= 0 ? "+" : "") + lift.toFixed(4);
+        liftEl.style.color = lift > 0 ? "var(--accent)" : "var(--flame)";
+
+        document.getElementById("demo-pred-fill").style.width = (Math.max(0, predCos) * 100) + "%";
+        document.getElementById("demo-copy-fill").style.width = (Math.max(0, copyCos) * 100) + "%";
+
+        // heatmaps
+        renderHeatmap(document.getElementById("demo-emb-pred"), predNorm);
+        renderHeatmap(document.getElementById("demo-emb-actual"), actualNorm);
+        var err = new Float32Array(predNorm.length);
+        for (var i = 0; i < predNorm.length; i++) err[i] = actualNorm[i] - predNorm[i];
+        renderHeatmap(document.getElementById("demo-emb-error"), err);
+
+        statusEl.textContent = "vicreg_promotion \u00B7 " +
+          (t1 - t0).toFixed(0) + "ms \u00B7 " +
+          "prediction=" + predCos.toFixed(4) + " \u00B7 copy=" + copyCos.toFixed(4) +
+          " \u00B7 lift=" + (lift >= 0 ? "+" : "") + lift.toFixed(4);
       }
 
+      // preset loading
       function loadPreset(idx) {
         beforeEl.value = PRESETS[idx].before;
         afterEl.value = PRESETS[idx].after;
+        currentAction = PRESETS[idx].action;
         document.querySelectorAll(".demo__preset").forEach(function(el, i) {
           el.classList.toggle("demo__preset--active", i === idx);
         });
-        if (model) runCompare();
+        if (model) runPredict();
       }
 
       document.querySelectorAll(".demo__preset").forEach(function(el) {
         el.addEventListener("click", function() { loadPreset(parseInt(el.dataset.idx)); });
       });
 
-      // load on scroll into view
+      // action preset buttons
+      document.querySelectorAll(".demo__action-btn").forEach(function(el) {
+        el.addEventListener("click", function() {
+          currentAction = el.dataset.action;
+          document.querySelectorAll(".demo__action-btn").forEach(function(b) {
+            b.classList.remove("demo__action-btn--active");
+          });
+          el.classList.add("demo__action-btn--active");
+          if (model) runPredict();
+        });
+      });
+
+      predictBtn.addEventListener("click", runPredict);
+      document.addEventListener("keydown", function(e) {
+        if ((e.metaKey || e.ctrlKey) && e.key === "Enter") runPredict();
+      });
+
+      // lazy load on scroll
       var loaded = false;
       var observer = new IntersectionObserver(function(entries) {
         if (entries[0].isIntersecting && !loaded) {
@@ -710,11 +781,13 @@ WM_EMA_DECAY=0.99999</code></pre>
         var weightsBytes = await fetch("wasm/vicreg_promotion.safetensors").then(function(r) { return r.arrayBuffer(); }).then(function(b) { return new Uint8Array(b); });
         statusEl.textContent = "Initializing model\u2026";
         model = WasmCodeWM.create(configJson, weightsBytes);
-        statusEl.textContent = "Ready \u2014 v2 vicreg_promotion \u00B7 vocab=" + model.vocab_size() + " \u00B7 pool=attn \u00B7 loops=3";
+        statusEl.textContent = "Ready \u2014 vicreg_promotion \u00B7 vocab=" + model.vocab_size() +
+          " \u00B7 actions=" + model.action_dim() + "d \u00B7 pool=attn \u00B7 loops=" + model.encoder_loops();
+        predictBtn.disabled = false;
         loadPreset(0);
       }
 
-      // load first preset text immediately
+      // pre-fill first preset
       beforeEl.value = PRESETS[0].before;
       afterEl.value = PRESETS[0].after;
     </script>

@@ -803,49 +803,129 @@ ol, ul { margin: 0; padding: 0; list-style: none; }
   border-radius: 1px;
 }
 
-/* cosine gauge */
-.demo__gauge-wrap {
-  padding: .8rem .8rem .3rem;
-}
-.demo__gauge-bar {
-  position: relative;
-  height: 8px;
-  background: var(--bg);
-  border-radius: 4px;
-  overflow: visible;
-}
-.demo__gauge-fill {
-  height: 100%;
-  background: var(--accent);
-  border-radius: 4px;
-  transition: width 300ms ease;
-}
-.demo__gauge-labels {
+/* action row */
+.demo__action-row {
   display: flex;
-  justify-content: space-between;
-  font-family: var(--mono);
-  font-size: 9px;
-  color: var(--ink-faint);
-  padding-top: .25rem;
-}
-.demo__gauge-readout {
-  display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: .6rem;
-  padding: .4rem .8rem .8rem;
+  padding: .5rem .8rem;
 }
-.demo__cos-value {
+.demo__action-presets {
+  display: flex;
+  gap: .35rem;
+  flex: 1;
+}
+.demo__action-btn {
+  background: var(--bg);
+  border: 1px solid var(--rule-soft);
+  color: var(--ink-faint);
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: .35rem .7rem;
+  cursor: pointer;
+  transition: all 120ms;
+}
+.demo__action-btn:hover { border-color: var(--accent-dim); color: var(--ink-soft); }
+.demo__action-btn--active {
+  border-color: var(--flame);
+  color: var(--flame);
+  background: rgba(255, 122, 89, 0.06);
+}
+.demo__predict-btn {
+  background: var(--flame) !important;
+  color: var(--bg) !important;
+  font-size: 12px !important;
+  padding: .45rem 1rem !important;
+  white-space: nowrap;
+}
+.demo__predict-btn:hover { background: #ff9476 !important; }
+
+/* dual gauge */
+.demo__dual-gauge {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 0;
+  padding: .8rem 0;
+}
+.demo__gauge-col {
+  text-align: center;
+  padding: .4rem .8rem;
+  border-right: 1px solid var(--rule-soft);
+}
+.demo__gauge-col:last-child { border-right: none; }
+.demo__gauge-col--lift { background: rgba(92, 212, 176, 0.03); }
+.demo__gauge-title {
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  color: var(--ink-faint);
+  margin-bottom: .3rem;
+}
+.demo__gauge-big {
   font-family: var(--mono);
   font-size: 28px;
   font-weight: 500;
   color: var(--accent);
   letter-spacing: -.02em;
+  line-height: 1.2;
 }
-.demo__cos-label {
+.demo__gauge-big--dim { color: var(--ink-faint); }
+.demo__gauge-sub {
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: 10px;
   color: var(--ink-faint);
-  letter-spacing: .04em;
+  margin-top: .15rem;
+  margin-bottom: .4rem;
+}
+.demo__mini-bar {
+  height: 4px;
+  background: var(--bg);
+  border-radius: 2px;
+  overflow: hidden;
+  max-width: 80%;
+  margin: 0 auto;
+}
+.demo__mini-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width 300ms ease;
+}
+.demo__mini-fill--dim { background: var(--ink-faint); }
+@media (max-width: 500px) {
+  .demo__dual-gauge { grid-template-columns: 1fr; }
+  .demo__gauge-col { border-right: none; border-bottom: 1px solid var(--rule-soft); }
+  .demo__gauge-col:last-child { border-bottom: none; }
+}
+
+/* embedding heatmap */
+.demo__heatrow {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .3rem .8rem;
+}
+.demo__heatlabel {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--ink-faint);
+  letter-spacing: .06em;
+  width: 4.5rem;
+  flex-shrink: 0;
+  text-align: right;
+}
+.demo__heatcells {
+  display: flex;
+  gap: 1px;
+  flex: 1;
+  min-width: 0;
+}
+.demo__heatcell {
+  flex: 1;
+  height: 14px;
+  min-width: 0;
+  border-radius: 1px;
 }
 
 /* status bar */

@@ -515,6 +515,13 @@ export class WasmCodeWM {
         wasm.__wbg_wasmcodewm_free(ptr, 0);
     }
     /**
+     * @returns {number}
+     */
+    action_dim() {
+        const ret = wasm.wasmcodewm_action_dim(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
      * Build from config JSON string + safetensors bytes.
      * @param {string} config_json
      * @param {Uint8Array} weights_bytes
@@ -532,8 +539,8 @@ export class WasmCodeWM {
         return WasmCodeWM.__wrap(ret[0]);
     }
     /**
-     * Encode a token sequence to a 128-d latent. Accepts i32 for JS ergonomics;
-     * values must be < vocab_size (662).
+     * Encode a token sequence to a model_dim-d latent. Accepts i32 for JS
+     * ergonomics; values must be < vocab_size.
      * @param {Int32Array} tokens
      * @returns {Float32Array}
      */
@@ -546,7 +553,7 @@ export class WasmCodeWM {
         return v2;
     }
     /**
-     * Encode an action vector (length action_dim = 7) to a 128-d latent.
+     * Encode an action vector (length action_dim) to a model_dim-d latent.
      * @param {Float32Array} action
      * @returns {Float32Array}
      */
@@ -575,6 +582,13 @@ export class WasmCodeWM {
     /**
      * @returns {number}
      */
+    encoder_loops() {
+        const ret = wasm.wasmcodewm_encoder_loops(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
+     * @returns {number}
+     */
     max_seq_len() {
         const ret = wasm.wasmcodewm_max_seq_len(this.__wbg_ptr);
         return ret >>> 0;
@@ -598,6 +612,23 @@ export class WasmCodeWM {
         const ptr1 = passArrayF32ToWasm0(z_action, wasm.__wbindgen_malloc);
         const len1 = WASM_VECTOR_LEN;
         const ret = wasm.wasmcodewm_predict(this.__wbg_ptr, ptr0, len0, ptr1, len1);
+        var v3 = getArrayF32FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v3;
+    }
+    /**
+     * Full transition prediction pipeline: encode state tokens + action vector
+     * → predict next latent. Returns the predicted next-state embedding.
+     * @param {Int32Array} tokens
+     * @param {Float32Array} action
+     * @returns {Float32Array}
+     */
+    predict_transition(tokens, action) {
+        const ptr0 = passArray32ToWasm0(tokens, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passArrayF32ToWasm0(action, wasm.__wbindgen_malloc);
+        const len1 = WASM_VECTOR_LEN;
+        const ret = wasm.wasmcodewm_predict_transition(this.__wbg_ptr, ptr0, len0, ptr1, len1);
         var v3 = getArrayF32FromWasm0(ret[0], ret[1]).slice();
         wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
         return v3;
