@@ -840,63 +840,48 @@ ol, ul { margin: 0; padding: 0; list-style: none; }
 }
 .demo__predict-btn:hover { background: #ff9476 !important; }
 
-/* dual gauge */
-.demo__dual-gauge {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 0;
-  padding: .8rem 0;
+/* cosine gauge */
+.demo__gauge-wrap {
+  padding: .4rem .8rem .6rem;
 }
-.demo__gauge-col {
-  text-align: center;
-  padding: .4rem .8rem;
-  border-right: 1px solid var(--rule-soft);
+.demo__gauge-bar {
+  height: 6px;
+  background: var(--bg);
+  border-radius: 3px;
+  overflow: hidden;
 }
-.demo__gauge-col:last-child { border-right: none; }
-.demo__gauge-col--lift { background: rgba(92, 212, 176, 0.03); }
-.demo__gauge-title {
+.demo__gauge-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 3px;
+  transition: width 300ms ease;
+}
+.demo__gauge-labels {
+  display: flex;
+  justify-content: space-between;
   font-family: var(--mono);
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: .1em;
+  font-size: 9px;
   color: var(--ink-faint);
-  margin-bottom: .3rem;
+  padding-top: .2rem;
 }
-.demo__gauge-big {
+.demo__gauge-readout {
+  display: flex;
+  align-items: baseline;
+  gap: .6rem;
+  padding: .6rem .8rem .2rem;
+}
+.demo__cos-value {
   font-family: var(--mono);
   font-size: 28px;
   font-weight: 500;
   color: var(--accent);
   letter-spacing: -.02em;
-  line-height: 1.2;
 }
-.demo__gauge-big--dim { color: var(--ink-faint); }
-.demo__gauge-sub {
+.demo__cos-label {
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: 11px;
   color: var(--ink-faint);
-  margin-top: .15rem;
-  margin-bottom: .4rem;
-}
-.demo__mini-bar {
-  height: 4px;
-  background: var(--bg);
-  border-radius: 2px;
-  overflow: hidden;
-  max-width: 80%;
-  margin: 0 auto;
-}
-.demo__mini-fill {
-  height: 100%;
-  background: var(--accent);
-  border-radius: 2px;
-  transition: width 300ms ease;
-}
-.demo__mini-fill--dim { background: var(--ink-faint); }
-@media (max-width: 500px) {
-  .demo__dual-gauge { grid-template-columns: 1fr; }
-  .demo__gauge-col { border-right: none; border-bottom: 1px solid var(--rule-soft); }
-  .demo__gauge-col:last-child { border-bottom: none; }
+  letter-spacing: .04em;
 }
 
 /* embedding heatmap */

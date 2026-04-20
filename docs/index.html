@@ -497,9 +497,8 @@ WM_EMA_DECAY=0.99999</code></pre>
       <p class="block__lede">
         The world model predicts what code looks like <em>after</em> an edit,
         without seeing the result. Enter before &amp; after code, pick an
-        action type &mdash; the predictor outputs a next-state embedding
-        and we compare it to the actual after-state. <strong>Lift</strong>
-        over the copy baseline is the metric that matters.
+        action type &mdash; the predictor outputs a next-state embedding.
+        We compare it to the actual after-state encoded by the target encoder.
       </p>
 
       <!-- edit presets -->
@@ -551,32 +550,20 @@ WM_EMA_DECAY=0.99999</code></pre>
         </div>
       </div>
 
-      <!-- results: two gauges side by side -->
-      <div class="demo__results" id="demo-results" style="display:none">
+      <!-- results -->
+      <div id="demo-results" style="display:none">
         <div class="demo__panel">
-          <div class="demo__panel-header"><span class="demo__panel-tag">PRED</span> transition prediction vs copy baseline</div>
-          <div class="demo__dual-gauge">
-            <div class="demo__gauge-col">
-              <div class="demo__gauge-title">prediction cosine</div>
-              <div class="demo__gauge-big" id="demo-pred-cos">&mdash;</div>
-              <div class="demo__gauge-sub">cos(predicted, actual)</div>
-              <div class="demo__mini-bar"><div class="demo__mini-fill" id="demo-pred-fill"></div></div>
-            </div>
-            <div class="demo__gauge-col">
-              <div class="demo__gauge-title">copy baseline</div>
-              <div class="demo__gauge-big demo__gauge-big--dim" id="demo-copy-cos">&mdash;</div>
-              <div class="demo__gauge-sub">cos(before, after)</div>
-              <div class="demo__mini-bar"><div class="demo__mini-fill demo__mini-fill--dim" id="demo-copy-fill"></div></div>
-            </div>
-            <div class="demo__gauge-col demo__gauge-col--lift">
-              <div class="demo__gauge-title">lift</div>
-              <div class="demo__gauge-big" id="demo-lift">&mdash;</div>
-              <div class="demo__gauge-sub">prediction &minus; copy</div>
-            </div>
+          <div class="demo__panel-header"><span class="demo__panel-tag">PRED</span> prediction accuracy &mdash; cos(predicted, target-encoded actual)</div>
+          <div class="demo__gauge-readout">
+            <span class="demo__cos-value" id="demo-pred-cos">&mdash;</span>
+            <span class="demo__cos-label" id="demo-pred-label">cosine similarity</span>
+          </div>
+          <div class="demo__gauge-wrap">
+            <div class="demo__gauge-bar"><div class="demo__gauge-fill" id="demo-pred-fill" style="width:0"></div></div>
+            <div class="demo__gauge-labels"><span>0.0</span><span>0.25</span><span>0.50</span><span>0.75</span><span>1.0</span></div>
           </div>
         </div>
 
-        <!-- predicted vs actual heatmaps -->
         <div class="demo__panel">
           <div class="demo__panel-header"><span class="demo__panel-tag">EMB</span> predicted vs actual next-state</div>
           <div class="demo__heatrow"><span class="demo__heatlabel">predicted</span><div class="demo__heatcells" id="demo-emb-pred"></div></div>
@@ -623,7 +610,6 @@ WM_EMA_DECAY=0.99999</code></pre>
       var beforeEl = document.getElementById("demo-before");
       var afterEl = document.getElementById("demo-after");
       var predictBtn = document.getElementById("demo-predict");
-      var resultsEl = document.getElementById("demo-results");
 
       function clearEl(el) { while (el.firstChild) el.removeChild(el.firstChild); }
 
@@ -641,13 +627,6 @@ WM_EMA_DECAY=0.99999</code></pre>
         var d = 0;
         for (var i = 0; i < a.length; i++) d += a[i] * b[i];
         return d;
-      }
-
-      function encodeCode(code) {
-        var tok = tokenize_python(code, model.max_seq_len());
-        var tok_i32 = new Int32Array(tok.length);
-        for (var i = 0; i < tok.length; i++) tok_i32[i] = tok[i];
-        return model.encode(tok_i32);
       }
 
       function parseAction(str) {
@@ -682,12 +661,19 @@ WM_EMA_DECAY=0.99999</code></pre>
         var t0 = performance.now();
 
         // encode before state
-        var zBefore = encodeCode(codeBefore);
+        // tokenize before
+        var tokBefore = tokenize_python(codeBefore, model.max_seq_len());
+        var tokB_i32 = new Int32Array(tokBefore.length);
+        for (var i = 0; i < tokBefore.length; i++) tokB_i32[i] = tokBefore[i];
+
+        // encode before state (online encoder)
+        var zBefore = model.encode(tokB_i32);
         // encode action
         var actionF32 = parseAction(currentAction);
         var zAction = model.encode_action(actionF32);
         // predict next state
         var zPredicted = model.predict(new Float32Array(zBefore), new Float32Array(zAction));
+
         // encode actual after state with TARGET encoder (predictor lives in target space)
         var afterEncoder = targetModel || model;
         var tokAfter = tokenize_python(codeAfter, afterEncoder.max_seq_len());
@@ -700,30 +686,19 @@ WM_EMA_DECAY=0.99999</code></pre>
         // normalize for cosine
         var predNorm = l2norm(new Float32Array(zPredicted));
         var actualNorm = l2norm(new Float32Array(zActual));
-
-        // copy baseline: encode before with TARGET encoder (same space as actual)
-        var zBeforeTarget = (targetModel || model).encode(tokB_i32);
-        var beforeTargetNorm = l2norm(new Float32Array(zBeforeTarget));
-
-        // prediction cosine: how well did the model predict?
         var predCos = cosine(predNorm, actualNorm);
-        // copy baseline: target_enc(before) vs target_enc(after)
-        var copyCos = cosine(beforeTargetNorm, actualNorm);
-        // lift: prediction - copy
-        var lift = predCos - copyCos;
 
         // show results
-        resultsEl.style.display = "";
+        document.getElementById("demo-results").style.display = "";
 
         document.getElementById("demo-pred-cos").textContent = predCos.toFixed(4);
-        document.getElementById("demo-copy-cos").textContent = copyCos.toFixed(4);
+        document.getElementById("demo-pred-label").textContent =
+          (predCos >= 0.8 ? "strong prediction" : predCos >= 0.5 ? "moderate prediction" : "weak prediction") +
+          " \u00B7 " + (t1 - t0).toFixed(0) + "ms";
 
-        var liftEl = document.getElementById("demo-lift");
-        liftEl.textContent = (lift >= 0 ? "+" : "") + lift.toFixed(4);
-        liftEl.style.color = lift > 0 ? "var(--accent)" : "var(--flame)";
-
-        document.getElementById("demo-pred-fill").style.width = (Math.max(0, predCos) * 100) + "%";
-        document.getElementById("demo-copy-fill").style.width = (Math.max(0, copyCos) * 100) + "%";
+        var fillEl = document.getElementById("demo-pred-fill");
+        fillEl.style.width = (Math.max(0, predCos) * 100) + "%";
+        fillEl.style.background = predCos >= 0.7 ? "var(--accent)" : predCos >= 0.4 ? "#e6c54d" : "var(--flame)";
 
         // heatmaps
         renderHeatmap(document.getElementById("demo-emb-pred"), predNorm);
@@ -734,8 +709,7 @@ WM_EMA_DECAY=0.99999</code></pre>
 
         statusEl.textContent = "vicreg_promotion \u00B7 " +
           (t1 - t0).toFixed(0) + "ms \u00B7 " +
-          "prediction=" + predCos.toFixed(4) + " \u00B7 copy=" + copyCos.toFixed(4) +
-          " \u00B7 lift=" + (lift >= 0 ? "+" : "") + lift.toFixed(4);
+          "cos(predicted, actual)=" + predCos.toFixed(4);
       }
 
       // preset loading
