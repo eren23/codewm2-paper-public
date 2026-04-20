@@ -539,6 +539,25 @@ export class WasmCodeWM {
         return WasmCodeWM.__wrap(ret[0]);
     }
     /**
+     * Build from config + encoder-only weights (target encoder for prediction).
+     * Accepts partial safetensors with only state_encoder.* keys — action encoder
+     * and predictor are left zeroed. Only `.encode()` is valid on this instance.
+     * @param {string} config_json
+     * @param {Uint8Array} weights_bytes
+     * @returns {WasmCodeWM}
+     */
+    static create_encoder_only(config_json, weights_bytes) {
+        const ptr0 = passStringToWasm0(config_json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passArray8ToWasm0(weights_bytes, wasm.__wbindgen_malloc);
+        const len1 = WASM_VECTOR_LEN;
+        const ret = wasm.wasmcodewm_create_encoder_only(ptr0, len0, ptr1, len1);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return WasmCodeWM.__wrap(ret[0]);
+    }
+    /**
      * Encode a token sequence to a model_dim-d latent. Accepts i32 for JS
      * ergonomics; values must be < vocab_size.
      * @param {Int32Array} tokens

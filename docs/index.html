@@ -617,6 +617,7 @@ WM_EMA_DECAY=0.99999</code></pre>
       ];
 
       var model = null;
+      var targetModel = null;
       var currentAction = "0,0,1,0,0,0,0,0.5,0,0,0,0,0,0,0";
       var statusEl = document.getElementById("demo-status");
       var beforeEl = document.getElementById("demo-before");
@@ -687,20 +688,27 @@ WM_EMA_DECAY=0.99999</code></pre>
         var zAction = model.encode_action(actionF32);
         // predict next state
         var zPredicted = model.predict(new Float32Array(zBefore), new Float32Array(zAction));
-        // encode actual after state
-        var zActual = encodeCode(codeAfter);
+        // encode actual after state with TARGET encoder (predictor lives in target space)
+        var afterEncoder = targetModel || model;
+        var tokAfter = tokenize_python(codeAfter, afterEncoder.max_seq_len());
+        var tokA_i32 = new Int32Array(tokAfter.length);
+        for (var j = 0; j < tokAfter.length; j++) tokA_i32[j] = tokAfter[j];
+        var zActual = afterEncoder.encode(tokA_i32);
 
         var t1 = performance.now();
 
         // normalize for cosine
         var predNorm = l2norm(new Float32Array(zPredicted));
         var actualNorm = l2norm(new Float32Array(zActual));
-        var beforeNorm = l2norm(new Float32Array(zBefore));
+
+        // copy baseline: encode before with TARGET encoder (same space as actual)
+        var zBeforeTarget = (targetModel || model).encode(tokB_i32);
+        var beforeTargetNorm = l2norm(new Float32Array(zBeforeTarget));
 
         // prediction cosine: how well did the model predict?
         var predCos = cosine(predNorm, actualNorm);
-        // copy baseline: just using the before-state as "prediction"
-        var copyCos = cosine(beforeNorm, actualNorm);
+        // copy baseline: target_enc(before) vs target_enc(after)
+        var copyCos = cosine(beforeTargetNorm, actualNorm);
         // lift: prediction - copy
         var lift = predCos - copyCos;
 
@@ -776,13 +784,22 @@ WM_EMA_DECAY=0.99999</code></pre>
       async function loadModel() {
         statusEl.textContent = "Loading WASM runtime\u2026";
         await init();
-        statusEl.textContent = "Loading v2 model weights (3.3 MB)\u2026";
+        statusEl.textContent = "Loading model weights (3.3 MB + 1.6 MB target)\u2026";
         var configJson = await fetch("wasm/vicreg_promotion.config.json").then(function(r) { return r.text(); });
-        var weightsBytes = await fetch("wasm/vicreg_promotion.safetensors").then(function(r) { return r.arrayBuffer(); }).then(function(b) { return new Uint8Array(b); });
-        statusEl.textContent = "Initializing model\u2026";
-        model = WasmCodeWM.create(configJson, weightsBytes);
+        var results = await Promise.all([
+          fetch("wasm/vicreg_promotion.safetensors").then(function(r) { return r.arrayBuffer(); }).then(function(b) { return new Uint8Array(b); }),
+          fetch("wasm/vicreg_promotion_target.safetensors").then(function(r) { return r.arrayBuffer(); }).then(function(b) { return new Uint8Array(b); }),
+        ]);
+        statusEl.textContent = "Initializing models\u2026";
+        model = WasmCodeWM.create(configJson, results[0]);
+        try {
+          targetModel = WasmCodeWM.create_encoder_only(configJson, results[1]);
+        } catch(e) {
+          targetModel = null;
+        }
         statusEl.textContent = "Ready \u2014 vicreg_promotion \u00B7 vocab=" + model.vocab_size() +
-          " \u00B7 actions=" + model.action_dim() + "d \u00B7 pool=attn \u00B7 loops=" + model.encoder_loops();
+          " \u00B7 actions=" + model.action_dim() + "d \u00B7 pool=attn \u00B7 loops=" + model.encoder_loops() +
+          (targetModel ? " \u00B7 target\u2713" : " \u00B7 target\u2717");
         predictBtn.disabled = false;
         loadPreset(0);
       }
